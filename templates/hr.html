@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tạp hóa 360 - Quản trị Nhân lực & Chấm công</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4,0,0.6,1) infinite',
+                        'bounce-slow': 'bounce 2s infinite',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-[#F4F6F8] font-sans text-slate-800 overflow-hidden">
+<div class="flex h-screen">
+
+    <!-- SIDEBAR -->
+    <aside class="w-56 bg-[#0F3A2E] text-white flex flex-col justify-between p-4 shadow-xl shrink-0 h-screen">
+        <div>
+            <!-- Logo -->
+            <div class="flex items-center gap-2.5 px-1 py-3 border-b border-emerald-800/50 mb-5">
+                <div class="bg-emerald-500 p-1.5 rounded-xl font-bold text-lg flex items-center justify-center w-9 h-9">A</div>
+                <div>
+                    <h1 class="font-bold text-sm leading-tight">TẠP HÓA 360</h1>
+                    <span class="text-[8px] text-emerald-300 font-medium">QUẢN TRỊ BÁN LẺ THÔNG MINH</span>
+                </div>
+            </div>
+
+            <!-- Module label -->
+            <div class="mb-3 px-2">
+                <span class="text-[9px] text-emerald-400/70 font-semibold tracking-widest uppercase">NHÂN SỰ</span>
+            </div>
+
+            <!-- HR Navigation -->
+            <nav class="space-y-0.5 text-xs font-medium">
+                <a href="/hr.php?tab=overview" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl {{ 'bg-emerald-700/70 text-white font-bold shadow-inner' if tab == 'overview' else 'text-emerald-100/70 hover:bg-emerald-800/40 hover:text-white transition' }}">
+                    <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 shrink-0"></i>
+                    <span>Tổng quan</span>
+                </a>
+                <a href="/hr.php?tab=attendance" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl {{ 'bg-emerald-700/70 text-white font-bold shadow-inner' if tab == 'attendance' else 'text-emerald-100/70 hover:bg-emerald-800/40 hover:text-white transition' }}">
+                    <i data-lucide="scan-face" class="w-3.5 h-3.5 shrink-0"></i>
+                    <span>Chấm công</span>
+                </a>
+                <a href="/hr.php?tab=schedule" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl {{ 'bg-emerald-700/70 text-white font-bold shadow-inner' if tab == 'schedule' else 'text-emerald-100/70 hover:bg-emerald-800/40 hover:text-white transition' }}">
+                    <i data-lucide="calendar-days" class="w-3.5 h-3.5 shrink-0"></i>
+                    <span>Lịch phân ca</span>
+                </a>
+                <a href="/hr.php?tab=employees" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl {{ 'bg-emerald-700/70 text-white font-bold shadow-inner' if tab == 'employees' else 'text-emerald-100/70 hover:bg-emerald-800/40 hover:text-white transition' }}">
+                    <i data-lucide="users" class="w-3.5 h-3.5 shrink-0"></i>
+                    <span>Nhân viên & quyền</span>
+                </a>
+                <a href="/hr.php?tab=payroll" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl {{ 'bg-emerald-700/70 text-white font-bold shadow-inner' if tab == 'payroll' else 'text-emerald-100/70 hover:bg-emerald-800/40 hover:text-white transition' }}">
+                    <i data-lucide="wallet" class="w-3.5 h-3.5 shrink-0"></i>
+                    <span>Bảng lương</span>
+                </a>
+
+                <!-- Divider -->
+                <div class="border-t border-emerald-800/40 my-2"></div>
+                <div class="mb-1 px-1">
+                    <span class="text-[9px] text-emerald-400/70 font-semibold tracking-widest uppercase">BÁN HÀNG</span>
+                </div>
+                <a href="/index.php" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-emerald-100/60 hover:bg-emerald-800/40 hover:text-white transition text-[11px]">
+                    <i data-lucide="arrow-left" class="w-3.5 h-3.5 shrink-0"></i>
+                    <span>Quay lại Quản lý BH</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- User box -->
+        <div class="bg-emerald-950/50 rounded-2xl p-2.5 flex items-center gap-2 border border-emerald-800/30 mt-4">
+            <div class="w-8 h-8 rounded-full bg-emerald-400/20 border border-emerald-400 flex items-center justify-center text-emerald-300 font-bold text-[10px] shrink-0">MA</div>
+            <div class="overflow-hidden">
+                <h4 class="text-[11px] font-bold text-white truncate">Cửa hàng Minh An</h4>
+                <p class="text-[9px] text-emerald-300/80">Hệ thống sẵn sàng</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 overflow-y-auto">
+
+        <!-- TOP HEADER BAR -->
+        <div class="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center sticky top-0 z-10">
+            <div>
+                <h2 class="text-base font-bold text-slate-900">Quản trị nhân lực & chấm công</h2>
+                <p class="text-[10px] text-slate-400">Phân ca tối ưu · Chấm công đúng vị trí · Tính lương nhanh gọn</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="text-xs text-slate-500 flex items-center gap-1.5">
+                    <i data-lucide="clock" class="w-3.5 h-3.5 text-emerald-600"></i>
+                    <span id="live-clock">{{ today }}</span>
+                </div>
+                <button onclick="document.getElementById('addEmpModal').classList.remove('hidden')"
+                    class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition">
+                    <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> Thêm nhân viên
+                </button>
+            </div>
+        </div>
+
+        <div class="p-5 space-y-5">
+
+            <!-- 4 STAT CARDS -->
+            <div class="grid grid-cols-4 gap-4">
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+                    <div class="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><i data-lucide="users" class="w-5 h-5"></i></div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-medium">Nhân viên đang hoạt động</p>
+                        <h3 class="text-xl font-bold text-slate-900">{{ stats.total_employees }} <span class="text-sm font-normal text-slate-400">người</span></h3>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+                    <div class="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><i data-lucide="scan-face" class="w-5 h-5"></i></div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-medium">Độ chấm công hôm nay</p>
+                        <h3 class="text-xl font-bold text-slate-900">{{ stats.checked_today }} <span class="text-sm font-normal text-slate-400">/ {{ stats.total_scheduled }}</span></h3>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+                    <div class="p-2.5 bg-amber-50 text-amber-600 rounded-xl"><i data-lucide="alert-triangle" class="w-5 h-5"></i></div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-medium">Ca cần người thay</p>
+                        <h3 class="text-xl font-bold text-amber-600">{{ stats.missing_shifts }} <span class="text-sm font-normal text-slate-400">ca</span></h3>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+                    <div class="p-2.5 bg-purple-50 text-purple-600 rounded-xl"><i data-lucide="wallet" class="w-5 h-5"></i></div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-medium">Lương tạm tính tháng {{ stats.current_month }}</p>
+                        <h3 class="text-xl font-bold text-purple-700">{{ stats.salary_sum_million }} <span class="text-sm font-normal text-slate-400">triệu đ</span></h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- =================== TAB: TỔNG QUAN =================== -->
+            {% if tab == 'overview' %}
+            <div class="grid grid-cols-12 gap-5">
+
+                <!-- LEFT: App Mobile Preview -->
+                <div class="col-span-3">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-bold text-slate-800 text-xs">Ứng dụng nhân viên</h3>
+                            <span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-lg">Đi động</span>
+                        </div>
+                        <!-- Phone mockup -->
+                        <div class="relative mx-auto" style="width:170px;">
+                            <div class="bg-slate-900 rounded-[2rem] p-2 shadow-2xl">
+                                <div class="bg-white rounded-[1.5rem] overflow-hidden" style="height:320px;">
+                                    <!-- App screen -->
+                                    <div class="bg-gradient-to-b from-[#0F3A2E] to-emerald-800 p-3 pb-4">
+                                        <div class="flex items-center gap-1.5 mb-2">
+                                            <div class="w-6 h-6 rounded-full bg-emerald-400/30 flex items-center justify-center text-white text-[8px] font-bold">LN</div>
+                                            <div>
+                                                <p class="text-white text-[8px] font-bold leading-none">Chào buổi sáng, Lan 🌤️</p>
+                                                <p class="text-emerald-300 text-[7px]">Ca sáng · Thu ngân</p>
+                                            </div>
+                                        </div>
+                                        <!-- Mini chart -->
+                                        <div class="bg-emerald-900/50 rounded-xl p-2 mb-2">
+                                            <p class="text-emerald-300 text-[7px] mb-1">VỊ TRÍ CỦA HÀNG</p>
+                                            <div class="flex items-end gap-0.5 h-8">
+                                                {% for h in [60, 75, 50, 85, 70, 90, 65] %}
+                                                <div class="flex-1 bg-emerald-400/70 rounded-sm" style="height:{{ h }}%"></div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        <button class="w-full bg-emerald-500 text-white text-[8px] font-bold py-1.5 rounded-lg flex items-center justify-center gap-1">
+                                            <i data-lucide="map-pin" class="w-2.5 h-2.5"></i> Xác nhận vị trí &amp; quét QR
+                                        </button>
+                                    </div>
+                                    <!-- QR section -->
+                                    <div class="bg-slate-50 p-2 border-t border-slate-200">
+                                        <div class="flex items-center gap-1.5 mb-1.5">
+                                            <div class="w-10 h-10 bg-slate-200 rounded-lg flex items-center justify-center">
+                                                <i data-lucide="qr-code" class="w-6 h-6 text-slate-600"></i>
+                                            </div>
+                                            <div>
+                                                <p class="text-[8px] font-bold text-slate-800">Mã QR thay đổi liên tục</p>
+                                                <p class="text-[7px] text-slate-400">Bảo mật chống gian lận · Cập nhật 10s</p>
+                                            </div>
+                                        </div>
+                                        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-1.5">
+                                            <p class="text-[7px] font-bold text-emerald-800">Ca làm của tôi</p>
+                                            <p class="text-[8px] text-slate-700">Ca sáng · 06:00 - 14:00</p>
+                                            <div class="mt-1 h-1 bg-emerald-200 rounded-full overflow-hidden">
+                                                <div class="h-full bg-emerald-500 rounded-full" style="width:65%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- phone notch -->
+                            <div class="absolute top-3.5 left-1/2 -translate-x-1/2 w-10 h-1.5 bg-slate-800 rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CENTER: Bảng điều hành nhân sự -->
+                <div class="col-span-6 space-y-4">
+
+                    <!-- Lịch phân ca tuần -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-sm">Bảng điều hành nhân sự</h3>
+                                <p class="text-[10px] text-slate-400">Lịch phân ca tuần</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <a href="?tab=overview&week={{ week_offset - 1 }}" class="p-1.5 hover:bg-slate-100 rounded-lg transition"><i data-lucide="chevron-left" class="w-4 h-4 text-slate-500"></i></a>
+                                <span class="text-xs font-bold text-slate-700">{{ schedule.week_start }} – {{ schedule.week_end }}</span>
+                                <a href="?tab=overview&week={{ week_offset + 1 }}" class="p-1.5 hover:bg-slate-100 rounded-lg transition"><i data-lucide="chevron-right" class="w-4 h-4 text-slate-500"></i></a>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead>
+                                    <tr class="border-b border-slate-100">
+                                        <th class="text-left pb-2 text-slate-400 font-medium text-[10px] w-28">NHÂN VIÊN</th>
+                                        {% for dl in schedule.day_labels %}
+                                        <th class="pb-2 text-center text-slate-400 font-medium text-[10px]">{{ dl }}</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-50">
+                                    {% for row in schedule.schedule_rows %}
+                                    <tr>
+                                        <td class="py-2 pr-2">
+                                            <div class="flex items-center gap-1.5">
+                                                <div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[9px] font-bold shrink-0">{{ row.employee.avatar_initials if row.employee.avatar_initials else row.employee.name[:2].upper() }}</div>
+                                                <span class="font-semibold text-slate-700 text-[11px] truncate max-w-[70px]">{{ row.employee.name }}</span>
+                                            </div>
+                                        </td>
+                                        {% for day in row.days %}
+                                        <td class="py-2 text-center">
+                                            {% if day.shift != 'NGHI' %}
+                                            <span class="inline-block px-1.5 py-0.5 rounded-md text-[9px] font-bold {{ day.bg }} {{ day.text }}">{{ day.shift }}</span>
+                                            {% else %}
+                                            <span class="inline-block w-5 h-1 bg-slate-200 rounded-full"></span>
+                                            {% endif %}
+                                        </td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Bảng lương gợi ý tự động -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-sm">Bảng lương gợi ý tự động</h3>
+                                <p class="text-[10px] text-slate-400">Tính từ ca làm · Giờ công tháng {{ month }}/{{ year }}</p>
+                            </div>
+                            <button onclick="approvePayroll()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition">
+                                <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Duyệt bảng lương
+                            </button>
+                        </div>
+                        <table class="w-full text-xs">
+                            <thead>
+                                <tr class="border-b border-slate-100 text-slate-400 text-[10px] font-medium">
+                                    <th class="text-left pb-2">NHÂN VIÊN</th>
+                                    <th class="text-right pb-2">GIỜ CÔNG</th>
+                                    <th class="text-right pb-2">LƯƠNG CƠ BẢN</th>
+                                    <th class="text-right pb-2">PHỤ CẤP</th>
+                                    <th class="text-right pb-2">KHẤU TRỪ</th>
+                                    <th class="text-right pb-2">THỰC NHẬN</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                {% for p in payroll %}
+                                <tr class="hover:bg-slate-50 transition">
+                                    <td class="py-2.5">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[9px] font-bold">{{ p.avatar_initials }}</div>
+                                            <div>
+                                                <p class="font-semibold text-slate-800 text-[11px]">{{ p.name }}</p>
+                                                <p class="text-[9px] text-slate-400">{{ p.role_display }}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-right py-2.5 text-slate-600">{{ p.hours_worked }}h</td>
+                                    <td class="text-right py-2.5 text-slate-600">{{ p.base_salary_fmt }} đ</td>
+                                    <td class="text-right py-2.5 text-emerald-600 font-semibold">+{{ "{:,.0f}".format(p.bonus).replace(",", ".") }} đ</td>
+                                    <td class="text-right py-2.5 text-rose-500">-{{ "{:,.0f}".format(p.deduction).replace(",", ".") }} đ</td>
+                                    <td class="text-right py-2.5 font-bold text-slate-900">{{ p.total_fmt }} đ</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <p class="text-[10px] text-slate-400 mt-2 text-center">Quy ý tế bắt buộc · Đủ điều kiện tính lương · Chú thích khấu trừ trình bày trên báo cáo lương</p>
+                    </div>
+                </div>
+
+                <!-- RIGHT: Phân quyền tài khoản -->
+                <div class="col-span-3">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 h-full">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-bold text-slate-800 text-sm">Phân quyền tài khoản</h3>
+                            <span class="text-[10px] text-slate-400">Tổi ưu</span>
+                        </div>
+
+                        <div class="space-y-3">
+                            {% for perm in permissions %}
+                            <div class="border border-slate-100 rounded-xl p-3">
+                                <div class="flex justify-between items-start mb-1.5">
+                                    <div class="flex items-center gap-2">
+                                        {% if perm.color == 'emerald' %}
+                                        <div class="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg"><i data-lucide="{{ perm.icon }}" class="w-3.5 h-3.5"></i></div>
+                                        {% elif perm.color == 'blue' %}
+                                        <div class="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><i data-lucide="{{ perm.icon }}" class="w-3.5 h-3.5"></i></div>
+                                        {% elif perm.color == 'purple' %}
+                                        <div class="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><i data-lucide="{{ perm.icon }}" class="w-3.5 h-3.5"></i></div>
+                                        {% else %}
+                                        <div class="p-1.5 bg-amber-100 text-amber-600 rounded-lg"><i data-lucide="{{ perm.icon }}" class="w-3.5 h-3.5"></i></div>
+                                        {% endif %}
+                                        <span class="text-xs font-bold text-slate-800">{{ perm.label }}</span>
+                                    </div>
+                                    <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg">{{ perm.count }}</span>
+                                </div>
+                                <div class="pl-7 space-y-0.5">
+                                    {% for p in perm.perms %}
+                                    <p class="text-[10px] text-slate-500">· {{ p }}</p>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <button onclick="document.getElementById('addEmpModal').classList.remove('hidden')"
+                            class="w-full mt-3 border-2 border-dashed border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 text-slate-500 hover:text-emerald-700 text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 transition">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i> Thêm nhân viên
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- =================== TAB: CHẤM CÔNG =================== -->
+            {% if tab == 'attendance' %}
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-800">Danh sách chấm công hôm nay</h3>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Chấm công GPS · QR Code · {{ today }}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i> Xuất báo cáo
+                        </button>
+                        <button onclick="simulateCheckin()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition">
+                            <i data-lucide="scan-face" class="w-3.5 h-3.5"></i> Chấm công nhanh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Summary badges -->
+                <div class="flex gap-3 mb-4">
+                    <span class="bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        Đúng giờ: {{ attendance | selectattr('status', 'equalto', 'DUNG_GIO') | list | length }}
+                    </span>
+                    <span class="bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                        Đi trễ: {{ attendance | selectattr('status', 'equalto', 'DI_TRE') | list | length }}
+                    </span>
+                    <span class="bg-rose-100 text-rose-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                        Vắng: {{ attendance | selectattr('status', 'equalto', 'VANG') | list | length }}
+                    </span>
+                </div>
+
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-100 text-slate-400 text-[10px] font-medium">
+                            <th class="text-left pb-2">NHÂN VIÊN</th>
+                            <th class="text-left pb-2">VAI TRÒ</th>
+                            <th class="text-center pb-2">GIỜ VÀO</th>
+                            <th class="text-center pb-2">GIỜ RA</th>
+                            <th class="text-center pb-2">GPS</th>
+                            <th class="text-center pb-2">TRẠNG THÁI</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {% for a in attendance %}
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="py-3">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold">{{ a.avatar_initials }}</div>
+                                    <span class="font-semibold text-slate-800">{{ a.name }}</span>
+                                </div>
+                            </td>
+                            <td class="text-slate-500 py-3">{{ a.role_display }}</td>
+                            <td class="text-center py-3 font-mono font-bold text-slate-800">{{ a.check_in or '—' }}</td>
+                            <td class="text-center py-3 font-mono text-slate-600">{{ a.check_out or '—' }}</td>
+                            <td class="text-center py-3">
+                                {% if a.gps_location %}
+                                <span class="inline-flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg text-[10px]">
+                                    <i data-lucide="map-pin" class="w-3 h-3"></i> GPS
+                                </span>
+                                {% else %}
+                                <span class="text-slate-300 text-[10px]">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center py-3">
+                                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold {{ a.status_info.bg }} {{ a.status_info.text }}">
+                                    {{ a.status_info.label }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <!-- =================== TAB: LỊCH PHÂN CA =================== -->
+            {% if tab == 'schedule' %}
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-800">Lịch phân ca chi tiết</h3>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Phân ca theo tuần cho từng nhân viên</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <!-- Shift legend -->
+                        <div class="flex items-center gap-2">
+                            <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded">SÁNG</span>
+                            <span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded">CHIỀU</span>
+                            <span class="bg-purple-100 text-purple-800 text-[10px] font-bold px-2 py-0.5 rounded">TỐI</span>
+                            <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded">NGHỈ</span>
+                        </div>
+                        <div class="flex items-center gap-1 border border-slate-200 rounded-xl px-3 py-1.5">
+                            <a href="?tab=schedule&week={{ week_offset - 1 }}" class="p-0.5 hover:bg-slate-100 rounded transition"><i data-lucide="chevron-left" class="w-4 h-4 text-slate-500"></i></a>
+                            <span class="text-xs font-bold text-slate-700 px-1">{{ schedule.week_start }} – {{ schedule.week_end }}</span>
+                            <a href="?tab=schedule&week={{ week_offset + 1 }}" class="p-0.5 hover:bg-slate-100 rounded transition"><i data-lucide="chevron-right" class="w-4 h-4 text-slate-500"></i></a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="bg-slate-50 rounded-xl">
+                                <th class="text-left px-4 py-3 text-slate-500 font-semibold rounded-l-xl w-40">NHÂN VIÊN</th>
+                                {% for i in range(7) %}
+                                <th class="px-3 py-3 text-center text-slate-500 font-semibold">
+                                    <div>{{ schedule.day_labels[i] }}</div>
+                                    <div class="text-[9px] text-slate-400 font-normal">{{ schedule.week_dates[i][8:] }}/{{ schedule.week_dates[i][5:7] }}</div>
+                                </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for row in schedule.schedule_rows %}
+                            <tr class="hover:bg-slate-50/70 transition">
+                                <td class="px-4 py-4">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center text-[11px] font-bold">{{ row.employee.avatar_initials if row.employee.avatar_initials else row.employee.name[:2].upper() }}</div>
+                                        <div>
+                                            <p class="font-bold text-slate-800">{{ row.employee.name }}</p>
+                                            <p class="text-[10px] text-slate-400">{{ row.role_display }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                {% for day in row.days %}
+                                <td class="px-3 py-4 text-center">
+                                    {% if day.shift != 'NGHI' %}
+                                    <span class="inline-block px-2 py-1 rounded-lg text-[11px] font-bold {{ day.bg }} {{ day.text }}">{{ day.shift }}</span>
+                                    {% else %}
+                                    <span class="inline-block w-6 h-1.5 bg-slate-200 rounded-full"></span>
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- =================== TAB: NHÂN VIÊN & QUYỀN =================== -->
+            {% if tab == 'employees' %}
+            <div class="space-y-4">
+                <!-- Phân quyền overview -->
+                <div class="grid grid-cols-4 gap-4">
+                    {% for perm in permissions %}
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            {% if perm.color == 'emerald' %}
+                            <div class="p-2 bg-emerald-100 text-emerald-600 rounded-xl"><i data-lucide="{{ perm.icon }}" class="w-4 h-4"></i></div>
+                            {% elif perm.color == 'blue' %}
+                            <div class="p-2 bg-blue-100 text-blue-600 rounded-xl"><i data-lucide="{{ perm.icon }}" class="w-4 h-4"></i></div>
+                            {% elif perm.color == 'purple' %}
+                            <div class="p-2 bg-purple-100 text-purple-600 rounded-xl"><i data-lucide="{{ perm.icon }}" class="w-4 h-4"></i></div>
+                            {% else %}
+                            <div class="p-2 bg-amber-100 text-amber-600 rounded-xl"><i data-lucide="{{ perm.icon }}" class="w-4 h-4"></i></div>
+                            {% endif %}
+                            <span class="text-2xl font-bold text-slate-800">{{ perm.count }}</span>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-sm">{{ perm.label }}</h4>
+                        <div class="mt-1.5 space-y-0.5">
+                            {% for p in perm.perms %}
+                            <p class="text-[10px] text-slate-500">· {{ p }}</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Danh sách nhân viên -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-slate-800">Danh sách nhân viên ({{ employees | length }} người)</h3>
+                        <button onclick="document.getElementById('addEmpModal').classList.remove('hidden')"
+                            class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition">
+                            <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> Thêm nhân viên
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4">
+                        {% for emp in employees %}
+                        <div class="border border-slate-200 rounded-2xl p-4 hover:border-emerald-400 hover:shadow-md transition">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 text-white flex items-center justify-center font-bold text-sm">{{ emp.avatar_initials }}</div>
+                                <div>
+                                    <h4 class="font-bold text-slate-800 text-sm">{{ emp.name }}</h4>
+                                    <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg">{{ emp.role_display }}</span>
+                                </div>
+                            </div>
+                            <div class="space-y-1.5 text-xs text-slate-600">
+                                <div class="flex items-center gap-2"><i data-lucide="phone" class="w-3.5 h-3.5 text-slate-400"></i> {{ emp.phone }}</div>
+                                <div class="flex items-center gap-2"><i data-lucide="wallet" class="w-3.5 h-3.5 text-slate-400"></i> {{ "{:,.0f}".format(emp.base_salary).replace(",", ".") }} đ/tháng</div>
+                                <div class="flex items-center gap-2"><i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i> {{ emp.join_date }}</div>
+                            </div>
+                            <div class="mt-3 flex gap-2">
+                                <span class="{% if emp.status == 'ACTIVE' %}bg-emerald-100 text-emerald-700{% else %}bg-slate-100 text-slate-500{% endif %} text-[10px] font-bold px-2 py-1 rounded-lg">
+                                    {{ 'Đang làm việc' if emp.status == 'ACTIVE' else 'Nghỉ việc' }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- =================== TAB: BẢNG LƯƠNG =================== -->
+            {% if tab == 'payroll' %}
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-800">Bảng lương tháng {{ month }}/{{ year }}</h3>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Tính tự động theo giờ công thực tế</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <!-- Month filter -->
+                        <form method="GET" class="flex items-center gap-2">
+                            <input type="hidden" name="tab" value="payroll">
+                            <select name="month" class="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 outline-none" onchange="this.form.submit()">
+                                {% for m in range(1, 13) %}
+                                <option value="{{ m }}" {{ 'selected' if m == month }}>Tháng {{ m }}</option>
+                                {% endfor %}
+                            </select>
+                            <select name="year" class="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 outline-none" onchange="this.form.submit()">
+                                {% for y in [2025, 2026, 2027] %}
+                                <option value="{{ y }}" {{ 'selected' if y == year }}>{{ y }}</option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                        <button onclick="approvePayroll()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition">
+                            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Duyệt tất cả
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Total summary -->
+                <div class="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-4 mb-4 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-emerald-600 font-semibold">Tổng quỹ lương tháng {{ month }}/{{ year }}</p>
+                        <h3 class="text-2xl font-bold text-emerald-800">{{ "{:,.0f}".format(payroll | sum(attribute='total')).replace(",", ".") }} đ</h3>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-slate-500">{{ payroll | length }} nhân viên</p>
+                        <p class="text-xs text-slate-500">{{ payroll | sum(attribute='days_worked') }} ngày công tổng</p>
+                    </div>
+                </div>
+
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="bg-slate-50 rounded-xl text-slate-400 text-[10px] font-semibold">
+                            <th class="text-left px-4 py-3 rounded-l-xl">NHÂN VIÊN</th>
+                            <th class="text-center px-3 py-3">NGÀY LÀM</th>
+                            <th class="text-center px-3 py-3">GIỜ CÔNG</th>
+                            <th class="text-right px-3 py-3">LƯƠNG CƠ BẢN</th>
+                            <th class="text-right px-3 py-3">PHỤ CẤP</th>
+                            <th class="text-right px-3 py-3">KHẤU TRỪ</th>
+                            <th class="text-right px-3 py-3">THỰC NHẬN</th>
+                            <th class="text-center px-3 py-3 rounded-r-xl">TRẠNG THÁI</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for p in payroll %}
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="px-4 py-4">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 text-white flex items-center justify-center text-[11px] font-bold">{{ p.avatar_initials }}</div>
+                                    <div>
+                                        <p class="font-bold text-slate-800">{{ p.name }}</p>
+                                        <p class="text-[10px] text-slate-400">{{ p.role_display }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center px-3 py-4 font-semibold text-slate-700">{{ p.days_worked }} ngày</td>
+                            <td class="text-center px-3 py-4 text-slate-600">{{ p.hours_worked }}h</td>
+                            <td class="text-right px-3 py-4 text-slate-700">{{ p.base_salary_fmt }}</td>
+                            <td class="text-right px-3 py-4 text-emerald-600 font-semibold">+{{ "{:,.0f}".format(p.bonus).replace(",", ".") }}</td>
+                            <td class="text-right px-3 py-4 text-rose-500">-{{ "{:,.0f}".format(p.deduction).replace(",", ".") }}</td>
+                            <td class="text-right px-3 py-4 font-bold text-slate-900 text-sm">{{ p.total_fmt }} đ</td>
+                            <td class="text-center px-3 py-4">
+                                {% if p.status == 'APPROVED' %}
+                                <span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded-full">Đã duyệt</span>
+                                {% else %}
+                                <span class="bg-amber-100 text-amber-700 text-[10px] font-bold px-2.5 py-1 rounded-full">Chờ duyệt</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+        </div>
+    </main>
+</div>
+
+<!-- ===== MODAL: THÊM NHÂN VIÊN ===== -->
+<div id="addEmpModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+    <div class="bg-white rounded-3xl shadow-2xl p-6 w-[480px] max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-5">
+            <div>
+                <h3 class="font-bold text-lg text-slate-900">Thêm nhân viên mới</h3>
+                <p class="text-xs text-slate-400 mt-0.5">Điền thông tin để tạo tài khoản nhân viên</p>
+            </div>
+            <button onclick="document.getElementById('addEmpModal').classList.add('hidden')" class="p-2 hover:bg-slate-100 rounded-xl transition">
+                <i data-lucide="x" class="w-5 h-5 text-slate-500"></i>
+            </button>
+        </div>
+
+        <div class="space-y-4" id="addEmpForm">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs font-semibold text-slate-600 mb-1.5 block">Họ và tên *</label>
+                    <input id="empName" type="text" placeholder="Ví dụ: Nguyễn Văn A" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-emerald-400">
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-slate-600 mb-1.5 block">Số điện thoại</label>
+                    <input id="empPhone" type="text" placeholder="0901 234 567" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-emerald-400">
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-600 mb-1.5 block">Vai trò / Chức vụ *</label>
+                <select id="empRole" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-emerald-400">
+                    <option value="Thu ngan">Thu ngân</option>
+                    <option value="Kiem kho">Kiểm kho</option>
+                    <option value="Tai xe giao hang">Tài xế giao hàng</option>
+                    <option value="Chu tiem">Chủ tiệm</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs font-semibold text-slate-600 mb-1.5 block">Lương cơ bản (đ/tháng)</label>
+                    <input id="empSalary" type="number" value="6000000" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-emerald-400">
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-slate-600 mb-1.5 block">Lương giờ (đ/giờ)</label>
+                    <input id="empHourly" type="number" value="30000" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-emerald-400">
+                </div>
+            </div>
+
+            <div id="addEmpMsg" class="hidden"></div>
+
+            <div class="flex gap-3 pt-2">
+                <button onclick="document.getElementById('addEmpModal').classList.add('hidden')"
+                    class="flex-1 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-bold py-2.5 rounded-xl transition">
+                    Hủy bỏ
+                </button>
+                <button onclick="submitAddEmployee()"
+                    class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i> Thêm nhân viên
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+lucide.createIcons();
+
+// Live clock
+function updateClock() {
+    const now = new Date();
+    const pad = n => n.toString().padStart(2, '0');
+    document.getElementById('live-clock').textContent =
+        `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} - ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+updateClock();
+setInterval(updateClock, 10000);
+
+// Approve payroll
+function approvePayroll() {
+    const month = {{ month }};
+    const year = {{ year }};
+    fetch('/api/hr/payroll/approve', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({month, year})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast('✓ ' + data.message, 'emerald');
+            setTimeout(() => location.reload(), 1200);
+        }
+    });
+}
+
+// Add employee submit
+function submitAddEmployee() {
+    const name = document.getElementById('empName').value.trim();
+    const phone = document.getElementById('empPhone').value.trim();
+    const role = document.getElementById('empRole').value;
+    const base_salary = parseFloat(document.getElementById('empSalary').value) || 6000000;
+    const hourly_rate = parseFloat(document.getElementById('empHourly').value) || 30000;
+
+    if (!name) {
+        showFormMsg('Vui lòng nhập tên nhân viên!', 'rose');
+        return;
+    }
+
+    fetch('/api/hr/employees', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name, phone, role, base_salary, hourly_rate})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('addEmpModal').classList.add('hidden');
+            showToast('✓ Đã thêm nhân viên ' + name + ' thành công!', 'emerald');
+            setTimeout(() => location.reload(), 1200);
+        } else {
+            showFormMsg(data.message, 'rose');
+        }
+    });
+}
+
+function showFormMsg(msg, color) {
+    const el = document.getElementById('addEmpMsg');
+    el.textContent = msg;
+    el.className = `text-xs font-semibold text-${color}-600 bg-${color}-50 border border-${color}-200 px-3 py-2 rounded-xl`;
+    el.classList.remove('hidden');
+}
+
+// Simulate check-in (demo)
+function simulateCheckin() {
+    showToast('📍 Đang xác thực GPS... vui lòng sử dụng App Mobile để chấm công', 'blue');
+}
+
+// Toast notification
+function showToast(msg, color='emerald') {
+    const container = document.getElementById('toastContainer') || (() => {
+        const d = document.createElement('div');
+        d.id = 'toastContainer';
+        d.className = 'fixed bottom-5 right-5 z-50 space-y-2';
+        document.body.appendChild(d);
+        return d;
+    })();
+
+    const toast = document.createElement('div');
+    toast.className = `bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl border border-${color}-500/30 text-sm font-semibold transform translate-y-2 opacity-0 transition-all duration-300`;
+    toast.textContent = msg;
+    container.appendChild(toast);
+    setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 50);
+    setTimeout(() => {
+        toast.classList.add('opacity-0');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+</script>
+<div id="toastContainer" class="fixed bottom-5 right-5 z-50 space-y-2"></div>
+</body>
+</html>
