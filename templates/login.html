@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ 'Thiết lập cửa hàng' if setup else ('Đăng nhập ' + role_info.name if role_info else 'Chọn vai trò') }} · Tạp hóa 360</title><link rel="stylesheet" href="/static/retail.css?v=3.1"><script src="/static/login.js?v=3.1" defer></script></head>
+<body class="login-page"><main class="login-card {{ 'role-selector' if not role else '' }}"><div class="brand-mark">360</div><p class="eyebrow">TẠP HÓA 360</p>
+{% if not role %}
+<h1>Bạn làm việc ở vai trò nào?</h1><p class="muted">Chọn khu làm việc để đăng nhập bằng tài khoản được chủ tiệm cấp.</p>
+<div class="role-grid">{% for key, info in roles.items() %}<a class="role-card" href="/login/{{ key }}"><span class="role-icon">{{ info.icon }}</span><strong>{{ info.name }}</strong><small>{{ info.description }}</small><span class="role-cta">Đăng nhập →</span></a>{% endfor %}</div>
+<a class="button wide register-link" href="/register">Chưa có tài khoản? Đăng ký theo vai trò</a>
+{% else %}
+<span class="badge">{{ role_info.name }}</span><h1>{{ 'Bắt đầu cùng cửa hàng của bạn' if setup else 'Đăng nhập ' + role_info.name|lower }}</h1><p class="muted">{{ 'Tạo tài khoản chủ tiệm để quản lý toàn bộ cửa hàng.' if setup else role_info.description }}</p>
+<form id="login-form" data-setup="{{ 'true' if setup else 'false' }}"><input type="hidden" name="role" value="{{ role }}">
+{% if setup %}<label>Họ tên chủ tiệm<input name="name" required autocomplete="name" maxlength="100"></label>{% if setup_token_required %}<label>Mã thiết lập cửa hàng<input name="setup_token" type="password" required autocomplete="off" maxlength="256"><small>Dùng mã SETUP_TOKEN đã cấu hình khi triển khai.</small></label>{% endif %}{% endif %}
+<label>Tên đăng nhập<input name="username" required autocomplete="username" minlength="3" maxlength="64" pattern="[a-zA-Z0-9_.-]+" autofocus></label>
+<label>Mật khẩu<input name="password" type="password" required autocomplete="{{ 'new-password' if setup else 'current-password' }}" {{ 'minlength=10' if setup else '' }} maxlength="200"></label>
+{% if setup %}<p class="hint">Mật khẩu từ 10 ký tự. Tài khoản này có toàn quyền quản lý cửa hàng.</p>{% endif %}
+<p id="login-error" class="error" role="alert"></p><button type="submit" class="primary wide">{{ 'Tạo cửa hàng' if setup else 'Đăng nhập →' }}</button></form>
+{% if not setup %}<a class="button wide register-link" href="/register/{{ role }}">Đăng ký {{ role_info.name|lower }}</a><a href="/login" class="login-back">← Chọn vai trò khác</a>{% endif %}
+{% endif %}<p class="login-foot">Bán hàng gọn gàng. Quản lý rõ ràng.</p></main></body></html>

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ 'Đăng ký ' + role_info.name if role_info else 'Chọn vai trò đăng ký' }} · Tạp hóa 360</title><link rel="stylesheet" href="/static/retail.css?v=3.1"><script src="/static/register.js?v=3.1" defer></script></head>
+<body class="login-page"><main class="login-card {{ 'role-selector' if not role else '' }}"><div class="brand-mark">360</div><p class="eyebrow">TẠP HÓA 360 · ĐĂNG KÝ TÀI KHOẢN</p>
+{% if not role %}
+<h1>Bạn muốn đăng ký vai trò nào?</h1><p class="muted">Gửi thông tin của bạn để chủ tiệm duyệt quyền vào cửa hàng.</p>
+<div class="role-grid">{% for key, info in roles.items() %}<a class="role-card" href="/register/{{ key }}"><span class="role-icon">{{ info.icon }}</span><strong>{{ info.name }}</strong><small>{{ info.description }}</small><span class="role-cta">Đăng ký →</span></a>{% endfor %}</div>
+<a href="/login" class="login-back">Đã có tài khoản? Đăng nhập</a>
+{% else %}
+<span class="badge">{{ role_info.name }}</span><h1>Đăng ký {{ role_info.name|lower }}</h1><p class="muted">{{ role_info.description }}</p>
+<p class="notice">{{ 'Quyền chủ tiệm cần được một chủ tiệm hiện tại phê duyệt.' if role == 'owner' else 'Tài khoản sẽ được sử dụng sau khi chủ tiệm duyệt đăng ký.' }}</p>
+<form id="register-form"><input type="hidden" name="role" value="{{ role }}">
+<label>Họ và tên<input name="name" required autocomplete="name" maxlength="100" autofocus></label>
+<label>Số điện thoại <span class="hint">Không bắt buộc</span><input name="phone" type="tel" autocomplete="tel" maxlength="30"></label>
+<label>Tên đăng nhập<input name="username" required autocomplete="username" minlength="3" maxlength="64" pattern="[a-zA-Z0-9_.-]+"><small>3–64 ký tự: chữ, số, dấu chấm, gạch ngang hoặc gạch dưới.</small></label>
+<label>Mật khẩu<input name="password" type="password" required autocomplete="new-password" minlength="10" maxlength="200"></label>
+<label>Nhập lại mật khẩu<input name="confirm_password" type="password" required autocomplete="new-password" minlength="10" maxlength="200"></label>
+<p id="register-error" class="error" role="alert"></p><button type="submit" class="primary wide">Gửi đăng ký →</button></form>
+<section id="register-success" class="registration-success" role="status" hidden><span class="badge">Chờ chủ tiệm duyệt</span><h2>Đã nhận đăng ký của bạn</h2><p id="registration-message"></p><a class="button primary wide" href="/login/{{ role }}">Về trang đăng nhập {{ role_info.name|lower }}</a></section>
+<a href="/login/{{ role }}" class="login-back">Đã có tài khoản? Đăng nhập</a><a href="/register" class="login-back">← Đăng ký vai trò khác</a>
+{% endif %}<p class="login-foot">Bán hàng gọn gàng. Quản lý rõ ràng.</p></main></body></html>

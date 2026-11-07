@@ -1,0 +1,146 @@
+<?php
+require_once 'db.php';
+
+// Tối ưu: Lấy trực tiếp không cần chuẩn hóa phức tạp nếu từ khóa trống
+$searchKeyword = trim($_GET['q'] ?? '');
+
+if ($searchKeyword !== '') {
+    $stmt = $conn->prepare("SELECT product_name, sku, stock, unit, shelf_location, zone_code FROM products WHERE product_name LIKE ? OR sku LIKE ? LIMIT 1");
+    $searchTerm = "%" . $searchKeyword . "%";
+    $stmt->bind_param("ss", $searchTerm, $searchTerm);
+    $stmt->execute();
+    $productInfo = $stmt->get_result()->fetch_assoc();
+} else {
+    // Mặc định lấy nhanh sản phẩm đầu tiên không cần câu lệnh nặng
+    $productInfo = [
+        'product_name' => 'Sữa tươi không đường 1L',
+        'shelf_location' => 'Kệ B2 · Tầng 2 · Ô B2-04',
+        'zone_code' => 'B2',
+        'stock' => 12,
+        'unit' => 'lốc'
+    ];
+}
+
+if (!$productInfo) {
+    $productInfo = [
+        'product_name' => 'Không tìm thấy sản phẩm',
+        'shelf_location' => 'Chưa xác định vị trí',
+        'zone_code' => '--',
+        'stock' => 0,
+        'unit' => ''
+    ];
+}
+?>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bản đồ Cửa hàng 360° - Tạp hóa 360</title>
+    <!-- Tailwind CSS (Tải nhanh qua CDN tối ưu) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://unpkg.com">
+</head>
+<body class="bg-[#F4F6F8] font-sans text-slate-800">
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- SIDEBAR TRÁI -->
+        <aside class="w-64 bg-[#0F3A2E] text-white flex flex-col justify-between p-4 shadow-xl shrink-0">
+            <div>
+                <div class="flex items-center gap-3 px-2 py-3 border-b border-emerald-800/50 mb-6">
+                    <div class="bg-emerald-500 p-2 rounded-xl text-white font-bold text-xl flex items-center justify-center w-10 h-10">A</div>
+                    <div>
+                        <h1 class="font-bold text-base leading-tight">TẠP HÓA 360</h1>
+                        <span class="text-[9px] text-emerald-300">BẢN ĐỒ CỬA HÀNG</span>
+                    </div>
+                </div>
+
+                <nav class="space-y-1.5 text-xs font-medium">
+                    <a href="store_map.php" class="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-emerald-700/70 text-white font-bold shadow-inner">
+                        <span>🗺️ Sơ đồ & vị trí 360°</span>
+                    </a>
+                    <a href="index.php?tab=pos" class="flex items-center gap-3 px-3.5 py-3 rounded-xl text-emerald-100/70 hover:bg-emerald-800/40 hover:text-white transition">
+                        <span>← Quay lại Quản trị</span>
+                    </a>
+                </nav>
+            </div>
+
+            <div class="bg-emerald-950/50 rounded-2xl p-3 flex items-center gap-3 border border-emerald-800/30">
+                <div class="w-9 h-9 rounded-full bg-emerald-400/20 border border-emerald-400 flex items-center justify-center text-emerald-300 font-bold text-xs">MA</div>
+                <div class="overflow-hidden">
+                    <h4 class="text-xs font-bold text-white truncate">Cửa hàng Minh An</h4>
+                    <p class="text-[10px] text-emerald-300/80">Tốc độ tối ưu (Fast Load)</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- NỘI DUNG CHÍNH BẢN ĐỒ -->
+        <main class="flex-1 overflow-y-auto p-6 space-y-6">
+            
+            <header class="flex justify-between items-center bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">Khám phá cửa hàng 360°</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Tìm sản phẩm và xem định vị trực quan trên kệ</p>
+                </div>
+                <a href="index.php" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2 rounded-xl transition">
+                    ← Trang chủ Quản lý
+                </a>
+            </header>
+
+            <!-- THANH TÌM KIẾM NHANH -->
+            <form method="GET" action="store_map.php" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-12 gap-4 items-center">
+                <div class="col-span-8 flex items-center gap-3 bg-slate-50 border px-4 py-2.5 rounded-xl">
+                    <span class="text-slate-400">🔍</span>
+                    <input type="text" name="q" value="<?php echo htmlspecialchars($searchKeyword); ?>" placeholder="Nhập tên sản phẩm để tìm ngay trên bản đồ..." class="w-full bg-transparent text-xs outline-none text-slate-800">
+                    <button type="submit" class="text-[11px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-4 py-1.5 rounded-lg transition">Tìm kiếm</button>
+                </div>
+
+                <div class="col-span-4 flex items-center justify-between bg-emerald-50 border border-emerald-200 px-4 py-2.5 rounded-xl">
+                    <div class="text-[11px] truncate">
+                        <span class="text-emerald-700 font-bold">Đang chọn:</span> <?php echo htmlspecialchars($productInfo['product_name']); ?>
+                    </div>
+                    <span class="bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shrink-0">
+                        TỒN: <?php echo $productInfo['stock']; ?>
+                    </span>
+                </div>
+            </form>
+
+            <!-- SƠ ĐỒ MẶT BẰNG 2D -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 class="font-bold text-slate-900 text-sm mb-4">Sơ đồ vị trí mặt bằng cửa hàng (Load tức thì)</h3>
+                
+                <div class="border-2 border-dashed border-slate-200 rounded-2xl p-6 bg-slate-50/50 min-h-[380px] flex items-center justify-center">
+                    <div class="w-full max-w-2xl bg-white border rounded-2xl p-5 grid grid-cols-5 gap-3 text-center text-xs shadow-xs">
+                        <div class="bg-amber-50 border p-3 rounded-xl flex flex-col justify-center">
+                            <span class="text-[9px] font-bold text-amber-800">KHU A</span>
+                            <p class="font-bold text-slate-800 mt-1">ĐỒ KHÔ</p>
+                        </div>
+                        <div class="bg-slate-50 border p-3 rounded-xl flex flex-col justify-center">
+                            <p class="font-bold text-slate-700">DÃY A1</p>
+                        </div>
+                        <div class="bg-emerald-50 border-2 border-emerald-500 p-3 rounded-xl relative shadow-sm flex flex-col justify-center">
+                            <span class="text-[10px] font-bold text-emerald-800">DÃY B2</span>
+                            <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[9px] px-2.5 py-0.5 rounded-full font-bold truncate max-w-[140px] shadow-xs">
+                                📍 <?php echo htmlspecialchars($productInfo['product_name']); ?>
+                            </div>
+                            <div class="bg-emerald-100 py-1.5 rounded font-bold text-[10px] mt-2 text-emerald-900">
+                                <?php echo htmlspecialchars($productInfo['shelf_location']); ?>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 border p-3 rounded-xl flex flex-col justify-center">
+                            <p class="font-bold text-slate-700">DÃY C1</p>
+                        </div>
+                        <div class="bg-blue-50 border p-3 rounded-xl flex flex-col justify-center">
+                            <span class="text-[9px] font-bold text-blue-800">KHU E</span>
+                            <p class="font-bold text-slate-800 mt-1">ĐỒ MÁT</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+</body>
+</html>

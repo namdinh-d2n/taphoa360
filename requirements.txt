@@ -1,0 +1,2 @@
+# Keep local installs and deployments on the same verified versions.
+-r requirements.lock.txt

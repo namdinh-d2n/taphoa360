@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#123e32">
+  <title>Tạp hóa 360 · Quản lý cửa hàng</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/retail.css?v=3.1">
+  <script type="module" src="/static/retail.js?v=3.1"></script>
+</head>
+<body data-page="{{ page }}">
+  <a class="skip-link" href="#content">Đến nội dung chính</a>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <a href="/" class="brand"><span class="brand-mark">360</span><span>TẠP HÓA <b>360</b><small>KHÔNG GIAN QUẢN LÝ</small></span></a>
+      <nav id="navigation" aria-label="Điều hướng"></nav>
+      <div class="sidebar-footer"><span class="avatar">{{ user.name[:1] }}</span><div><strong>{{ user.name }}</strong><small id="role-label"></small></div></div>
+    </aside>
+    <button class="nav-scrim" id="nav-scrim" aria-label="Đóng menu" hidden></button>
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-heading"><button id="menu-toggle" class="menu-toggle" aria-label="Mở menu" aria-expanded="false" aria-controls="sidebar">☰</button><div><p class="eyebrow">CỬA HÀNG CỦA BẠN</p><h1 id="page-title">Tổng quan</h1></div></div>
+        <div class="topbar-right"><span id="today" class="muted"></span><span id="connection" class="badge" role="status">Sẵn sàng</span><span class="badge role-label">{{ role_info.name }}</span><button id="logout" type="button" class="logout-button">Đăng xuất</button></div>
+      </header>
+      <p id="page-description" class="page-description"></p>
+      <div id="page-error" class="error" role="alert"></div>
+      <section id="content" tabindex="-1" aria-busy="true"><div class="loading-state" role="status"><span class="loading-spinner"></span>Đang tải dữ liệu cửa hàng…</div></section>
+      <noscript><p class="error">Vui lòng bật JavaScript để sử dụng các chức năng quản lý cửa hàng.</p></noscript>
+      <footer class="page-footer"><strong>Tạp hóa 360</strong><span>Một nơi cho mọi hoạt động cửa hàng</span></footer>
+    </main>
+  </div>
+  <dialog id="modal" aria-labelledby="modal-title"><div class="modal-header"><h2 id="modal-title"></h2><button id="modal-close" class="icon-button" aria-label="Đóng">×</button></div><div id="modal-content"></div></dialog>
+  <div id="toast" role="status"></div>
+</body>
+</html>
