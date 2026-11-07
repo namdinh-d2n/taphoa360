@@ -1,23 +1,17 @@
 """
 Database connection module for Tạp hóa 360.
-Supports MySQL (PyMySQL) with automatic fallback to local SQLite (taphoa360.db)
-if the remote MySQL server is unreachable.
+Supports explicit SQLite/MySQL selection and an opt-in automatic fallback mode.
 """
 
-import os
 import sqlite3
+from pathlib import Path
 from datetime import datetime
 import pymysql
 import pymysql.cursors
 
-# Remote/Local MySQL Configurations
-MYSQL_HOST = os.getenv("DB_HOST", "sql204.infinityfree.com")
-MYSQL_USER = os.getenv("DB_USER", "if0_43333923")
-MYSQL_PASS = os.getenv("DB_PASS", "taphoa360")
-MYSQL_NAME = os.getenv("DB_NAME", "if0_43333923_taphoa360_db")
-MYSQL_PORT = int(os.getenv("DB_PORT", "3306"))
-
-SQLITE_PATH = os.path.join(os.path.dirname(__file__), "taphoa360.db")
+from config import (
+    DB_TYPE, MYSQL_HOST, MYSQL_USER, MYSQL_PASS, MYSQL_NAME, MYSQL_PORT, SQLITE_PATH,
+)
 
 _db_type = None  # 'mysql' or 'sqlite'
 
@@ -58,6 +52,16 @@ def _test_mysql():
 def get_db_type():
     global _db_type
     if _db_type is None:
+        if DB_TYPE == "sqlite":
+            _init_sqlite_schema()
+            _db_type = "sqlite"
+            print(f"[DB] Using SQLite: {SQLITE_PATH}")
+            return _db_type
+        if DB_TYPE == "mysql":
+            _db_type = "mysql"
+            print(f"[DB] Using configured MySQL ({MYSQL_HOST}:{MYSQL_PORT})")
+            return _db_type
+
         mysql_status = _test_mysql()
         if mysql_status == "local":
             _db_type = "mysql_local"
@@ -66,9 +70,9 @@ def get_db_type():
             _db_type = "mysql"
             print(f"[DB] Using MySQL Remote ({MYSQL_HOST})")
         else:
+            _init_sqlite_schema()
             _db_type = "sqlite"
             print(f"[DB] MySQL unavailable. Using SQLite fallback: {SQLITE_PATH}")
-            _init_sqlite_schema()
     return _db_type
 
 
@@ -167,8 +171,9 @@ def execute(sql, params=None):
         conn.close()
 
 
-def _init_sqlite_schema():
+def _init_sqlite_schema(seed_demo=True):
     """Initializes SQLite schema and seed sample data if tables don't exist."""
+    Path(SQLITE_PATH).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(SQLITE_PATH)
     cursor = conn.cursor()
 
@@ -237,7 +242,7 @@ def _init_sqlite_schema():
 
     # Seed data if products is empty
     cursor.execute("SELECT COUNT(*) FROM products")
-    if cursor.fetchone()[0] == 0:
+    if cursor.fetchone()[0] == 0 and seed_demo:
         cursor.executemany("""
             INSERT INTO products (product_name, sku, stock, unit, shelf_location, zone_code, price)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -251,7 +256,7 @@ def _init_sqlite_schema():
         ])
 
     cursor.execute("SELECT COUNT(*) FROM ai_suggestions")
-    if cursor.fetchone()[0] == 0:
+    if cursor.fetchone()[0] == 0 and seed_demo:
         cursor.executemany("""
             INSERT INTO ai_suggestions (suggestion_type, title, description, status)
             VALUES (?, ?, ?, ?)
@@ -261,7 +266,7 @@ def _init_sqlite_schema():
         ])
 
     cursor.execute("SELECT COUNT(*) FROM shippers")
-    if cursor.fetchone()[0] == 0:
+    if cursor.fetchone()[0] == 0 and seed_demo:
         cursor.executemany("""
             INSERT INTO shippers (name, status, note)
             VALUES (?, ?, ?)
@@ -271,7 +276,7 @@ def _init_sqlite_schema():
         ])
 
     cursor.execute("SELECT COUNT(*) FROM orders")
-    if cursor.fetchone()[0] == 0:
+    if cursor.fetchone()[0] == 0 and seed_demo:
         cursor.execute("""
             INSERT INTO orders (order_code, created_by, total_amount, payment_method, apartment, status, customer_note, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', '-10 minutes'))
@@ -359,7 +364,7 @@ def _init_sqlite_schema():
 
     # Seed HR data
     cursor.execute("SELECT COUNT(*) FROM employees")
-    if cursor.fetchone()[0] == 0:
+    if cursor.fetchone()[0] == 0 and seed_demo:
         cursor.executemany("""
             INSERT INTO employees (name, role, phone, base_salary, hourly_rate, avatar_initials, status)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -372,7 +377,7 @@ def _init_sqlite_schema():
         ])
 
     cursor.execute("SELECT COUNT(*) FROM shifts")
-    if cursor.fetchone()[0] == 0:
+    if cursor.fetchone()[0] == 0 and seed_demo:
         cursor.executemany("""
             INSERT INTO shifts (name, start_time, end_time, color, label)
             VALUES (?, ?, ?, ?, ?)
@@ -384,7 +389,7 @@ def _init_sqlite_schema():
         ])
 
     cursor.execute("SELECT COUNT(*) FROM shift_schedule")
-    if cursor.fetchone()[0] == 0:
+    if cursor.fetchone()[0] == 0 and seed_demo:
         from datetime import date, timedelta
         today = date.today()
         monday = today - timedelta(days=today.weekday())
@@ -409,7 +414,7 @@ def _init_sqlite_schema():
             )
 
     cursor.execute("SELECT COUNT(*) FROM attendance")
-    if cursor.fetchone()[0] == 0:
+    if cursor.fetchone()[0] == 0 and seed_demo:
         from datetime import date as dt_date
         today_str = dt_date.today().isoformat()
         cursor.executemany("""
@@ -424,7 +429,7 @@ def _init_sqlite_schema():
         ])
 
     cursor.execute("SELECT COUNT(*) FROM payroll")
-    if cursor.fetchone()[0] == 0:
+    if cursor.fetchone()[0] == 0 and seed_demo:
         from datetime import date as dt_date2
         m = dt_date2.today().month
         y = dt_date2.today().year
