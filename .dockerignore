@@ -1,0 +1,12 @@
+**
+!requirements.lock.txt
+!app.py
+!config.py
+!db.py
+!serve.py
+!retail/
+!retail/*.py
+!static/
+!static/*
+!templates/
+!templates/*.html
