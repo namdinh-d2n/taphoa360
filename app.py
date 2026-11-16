@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 import logging
 import sqlite3
 import config
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException,Depends
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -11,6 +11,10 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 import uvicorn
 from config import BASE_DIR, HOST, PORT, RELOAD
 from retail import auth, api, sales
+from retail.invoice_api import router as invoice_router
+from retail.shop_auth import customer_user
+from retail.shop_api import public as shop_public, admin as shop_admin, media as shop_media
+from retail.shop_auth import router as shop_auth_router
 from retail.database import migrate, reading, SCHEMA_VERSION
 from retail.middleware import RequestBodyLimit
 from retail.access import ROLE_PORTALS, home_for, may_open
@@ -25,12 +29,28 @@ async def lifespan(app):
 app = FastAPI(title='Tạp hóa 360', version='3.1.0', lifespan=lifespan,
               docs_url='/docs' if config.ENABLE_DOCS else None,
               redoc_url=None, openapi_url='/openapi.json' if config.ENABLE_DOCS else None)
-app.add_middleware(RequestBodyLimit, max_bytes=config.MAX_REQUEST_BYTES)
+app.add_middleware(RequestBodyLimit, max_bytes=config.MAX_REQUEST_BYTES,
+                   path_limits={'/api/v1/ai/invoices/preview': config.AI_IMAGE_MAX_BYTES + 65536,
+                                '/api/v1/shop/upload':4*1024*1024+65536})
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=config.ALLOWED_HOSTS)
 app.include_router(auth.router)
 app.include_router(api.router)
+app.include_router(invoice_router)
+app.include_router(shop_auth_router)
+app.include_router(shop_public)
+app.include_router(shop_admin)
+app.include_router(shop_media)
 app.mount('/static', StaticFiles(directory=BASE_DIR / 'static'), name='static')
+_media_directory=BASE_DIR/'.local'/'shop-media'
+_media_directory.mkdir(parents=True,exist_ok=True)
+app.mount('/shop-media',StaticFiles(directory=_media_directory),name='shop-media')
 templates = Jinja2Templates(directory=BASE_DIR / 'templates')
+
+
+@app.get('/shop',response_class=HTMLResponse,include_in_schema=False)
+@app.get('/shop/track/{token}',response_class=HTMLResponse,include_in_schema=False)
+def storefront(request:Request,token:str=''):
+    return templates.TemplateResponse(request=request,name='shop.html',context={'tracking_token':token})
 
 @app.middleware('http')
 async def response_headers(request: Request, call_next):
@@ -112,8 +132,39 @@ def receipt(request: Request, ident: int):
         order = sales.order_detail(conn, ident, user)
     return templates.TemplateResponse(request=request, name='receipt.html', context={'order': order})
 
+
+def online_invoice_context(conn,ident):
+    from retail.common import record,fail
+    import json
+    from retail.commerce import detail
+    order=record(conn,'online_orders',ident)
+    invoice=conn.execute('SELECT * FROM online_invoices WHERE online_order_id=?',(ident,)).fetchone()
+    if not invoice:fail('Hóa đơn chỉ được xuất sau khi cửa hàng duyệt đơn.',409)
+    return order,{'invoice':dict(invoice),'document':json.loads(invoice['snapshot']),'current':detail(conn,order,True)}
+
+
+@app.get('/shop/orders/{ident}/invoice',response_class=HTMLResponse,include_in_schema=False)
+def customer_invoice(request:Request,ident:int,user=Depends(customer_user)):
+    from retail.common import record,fail
+    with reading() as conn:
+        order=record(conn,'online_orders',ident)
+        if order['account_id']!=user['id']:fail('Không tìm thấy đơn.',404)
+        _,context=online_invoice_context(conn,ident)
+    return templates.TemplateResponse(request=request,name='online_invoice.html',context=context)
+
+
+@app.get('/online/invoices/{ident}',response_class=HTMLResponse,include_in_schema=False)
+def staff_online_invoice(request:Request,ident:int):
+    user=auth.current_user(request);auth.require('cashier','inventory','shipper')(user)
+    from retail.common import fail
+    with reading() as conn:
+        order,context=online_invoice_context(conn,ident)
+        if user['role']=='shipper' and order['shipper_id']!=user['id']:fail('Đơn chưa được phân công cho bạn.',403)
+    return templates.TemplateResponse(request=request,name='online_invoice.html',context=context)
+
 PAGES = {'/': 'dashboard', '/index': 'dashboard', '/index.php': 'dashboard', '/pos': 'pos', '/orders': 'orders', '/orders.php': 'orders', '/warehouse': 'inventory', '/warehouse.php': 'inventory', '/store_map': 'map', '/store-map': 'map', '/store_map.php': 'map', '/hr': 'hr', '/hr.php': 'hr', '/products': 'products', '/customers': 'customers', '/suppliers': 'suppliers', '/cash': 'cash', '/reports': 'reports', '/suggestions': 'suggestions', '/settings': 'settings'}
 PAGES.update({'/owner': 'owner_portal', '/cashier': 'cashier_portal', '/inventory': 'inventory_portal', '/shipper': 'shipper_portal'})
+PAGES['/online']='online'
 
 def page(request: Request):
     if auth.setup_status()['required']:

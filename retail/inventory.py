@@ -1,8 +1,12 @@
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 import secrets
 import math
 from .database import rows, one
 from .common import fail, money, number, rounded, required, day, audit, record, objects, quantity
+
+
+def local_now():
+    return datetime.now(timezone(timedelta(hours=7))).replace(tzinfo=None,microsecond=0).isoformat()
 
 
 def movement(conn, user, product_id, batch_id, quantity, kind, reference, note=''):
@@ -13,8 +17,8 @@ def movement(conn, user, product_id, batch_id, quantity, kind, reference, note='
 def take_stock(conn, user, product_id, quantity, kind, reference, include_expired=False):
     product = record(conn, 'products', product_id)
     batches = rows(conn, '''SELECT * FROM stock_batches WHERE product_id=? AND remaining>0
-        AND (? OR expires_on IS NULL OR expires_on>=?)
-        ORDER BY expires_on IS NULL,expires_on,received_at,id''', (product_id, int(include_expired), date.today().isoformat()))
+        AND (? OR ((expires_on IS NULL OR expires_on>=?) AND quality_status='SELLABLE' AND (sell_until IS NULL OR sell_until>?)))
+        ORDER BY expires_on IS NULL,expires_on,received_at,id''', (product_id, int(include_expired), local_now()[:10],local_now()))
     if sum(batch['remaining'] for batch in batches) + .00001 < quantity:
         fail(f"{product['product_name']}: không đủ tồn có thể sử dụng", 409)
     allocations = []
@@ -39,17 +43,25 @@ def add_batch(conn, user, product_id, qty, cost, lot, expiry, kind, reference, n
 def products(conn, query=''):
     term = '%' + query.strip() + '%'
     result = rows(conn, '''SELECT p.*,COALESCE((SELECT SUM(remaining) FROM stock_batches b
-        WHERE b.product_id=p.id AND (expires_on IS NULL OR expires_on>=?)),0) AS sellable_stock,
+        WHERE b.product_id=p.id AND (expires_on IS NULL OR expires_on>=?) AND quality_status='SELLABLE' AND (sell_until IS NULL OR sell_until>?)),0) AS sellable_stock,
         CASE WHEN promo_until>=? AND promo_price IS NOT NULL THEN promo_price ELSE price END AS selling_price
-        FROM products p WHERE product_name LIKE ? OR sku LIKE ? OR barcode LIKE ? ORDER BY active DESC,product_name''', (date.today().isoformat(), date.today().isoformat(), term, term, term))
+        FROM products p WHERE product_name LIKE ? OR sku LIKE ? OR barcode LIKE ? ORDER BY active DESC,product_name''', (local_now()[:10],local_now(), date.today().isoformat(), term, term, term))
     for product in result:
         product['sellable_stock'] = math.floor(round(product['sellable_stock'], 3))
+        from .commerce import effective_price
+        product['selling_price'],sale=effective_price(conn,product)
+        product['timed_sale_id']=sale['id'] if sale else None
     return result
 
 
 def save_product(conn, user, data, ident=None):
     old = record(conn, 'products', ident) if ident else {}
     merged = {**old, **data}
+    if not ident and not str(merged.get('sku') or '').strip():
+        while True:
+            merged['sku'] = 'SP-' + secrets.token_hex(5).upper()
+            if not one(conn, 'SELECT id FROM products WHERE sku=?', (merged['sku'],)):
+                break
     name, sku = required(merged, 'product_name', 'Tên hàng', 150), required(merged, 'sku', 'SKU', 64)
     barcode = str(merged.get('barcode', '')).strip()[:64]
     duplicate = one(conn, "SELECT id FROM products WHERE (sku=? OR (barcode=? AND barcode!='')) AND id!=?", (sku, barcode, ident or 0))
@@ -60,8 +72,48 @@ def save_product(conn, user, data, ident=None):
         conn.execute('UPDATE products SET product_name=?,sku=?,barcode=?,price=?,cost_price=?,unit=?,zone_code=?,shelf_location=?,min_stock=?,active=? WHERE id=?', (*values, ident))
     else:
         ident = conn.execute('INSERT INTO products(product_name,sku,barcode,price,cost_price,unit,zone_code,shelf_location,min_stock,active,stock) VALUES (?,?,?,?,?,?,?,?,?,?,0)', values).lastrowid
+    category=required(merged,'category','Danh mục',80) if merged.get('category') else 'Thiết yếu'
+    storage=merged.get('storage_kind','DRY')
+    if storage not in {'FRESH','FROZEN','CHILLED','DRY','HOUSEHOLD'}: fail('Loại bảo quản không hợp lệ')
+    conn.execute('UPDATE products SET category=?,storage_kind=?,description=?,online_enabled=? WHERE id=?',
+                 (category,storage,str(merged.get('description',''))[:2000],int(bool(merged.get('online_enabled',True))),ident))
+    brand=str(merged.get('brand') or '').strip()
+    if len(brand)>80:fail('Thương hiệu tối đa 80 ký tự.')
+    conn.execute('UPDATE products SET brand=? WHERE id=?',(brand,ident))
+    if ident and 'price' in data:
+        conn.execute("UPDATE products SET catalog_origin='STORE' WHERE id=?",(ident,))
     audit(conn, user, 'SAVE_PRODUCT', ident, {'sku': sku, 'price': values[3], 'cost': values[4]})
     return {'success': True, 'id': ident}
+
+
+def supplier_products(conn, supplier_id):
+    record(conn, 'suppliers', supplier_id)
+    return rows(conn, '''SELECT p.*,s.cost_price AS supplier_cost_price,s.supplier_sku,s.is_sample_price
+        FROM supplier_products s JOIN products p ON p.id=s.product_id
+        WHERE s.supplier_id=? ORDER BY p.active DESC,p.product_name,p.id''', (supplier_id,))
+
+
+def save_supplier_product(conn, user, supplier_id, data):
+    record(conn, 'suppliers', supplier_id)
+    if 'product_id' in data:
+        product = record(conn, 'products', data['product_id'])
+    else:
+        ident = save_product(conn, user, {**data, 'zone_code': data.get('zone_code') or 'A1'})['id']
+        product = record(conn, 'products', ident)
+    old = one(conn, 'SELECT * FROM supplier_products WHERE supplier_id=? AND product_id=?',
+              (supplier_id, product['id'])) or {}
+    cost = money(data.get('cost_price', old.get('cost_price', product['cost_price'])))
+    code = str(data.get('supplier_sku', old.get('supplier_sku', '')) or '').strip()
+    if len(code) > 64:
+        fail('Mã hàng nhà cung cấp tối đa 64 ký tự')
+    conn.execute('''INSERT INTO supplier_products(supplier_id,product_id,cost_price,supplier_sku)
+        VALUES (?,?,?,?) ON CONFLICT(supplier_id,product_id) DO UPDATE SET
+        cost_price=excluded.cost_price,supplier_sku=excluded.supplier_sku,is_sample_price=0''',
+        (supplier_id, product['id'], cost, code))
+    audit(conn, user, 'SAVE_SUPPLIER_PRODUCT', supplier_id,
+          {'product_id': product['id'], 'cost_price': cost, 'supplier_sku': code})
+    saved = next(p for p in supplier_products(conn, supplier_id) if p['id'] == product['id'])
+    return {'success': True, 'id': product['id'], 'product': saved}
 
 
 def cash_shift(conn, user):
@@ -107,6 +159,10 @@ def purchase(conn, user, data):
         batch = add_batch(conn, user, product_id, qty, cost, lot, expiry, 'PURCHASE', ident)
         conn.execute('INSERT INTO purchase_items(receipt_id,product_id,batch_id,quantity,cost_price) VALUES (?,?,?,?,?)', (ident, product_id, batch, qty, cost))
         conn.execute('UPDATE products SET cost_price=? WHERE id=?', (cost, product_id))
+        # Keep legacy purchase clients compatible and remember the latest price for this supplier.
+        conn.execute('''INSERT INTO supplier_products(supplier_id,product_id,cost_price) VALUES (?,?,?)
+            ON CONFLICT(supplier_id,product_id) DO UPDATE SET cost_price=excluded.cost_price,is_sample_price=0''',
+            (supplier['id'], product_id, cost))
     if paid:
         payment(conn, user, -paid, method, 'PURCHASE', ident)
     conn.execute("INSERT INTO account_entries(party_type,party_id,amount,reference,user_id) VALUES ('SUPPLIER',?,?,?,?)", (supplier['id'], total - paid, f'PURCHASE:{ident}', user['id']))

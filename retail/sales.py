@@ -10,6 +10,8 @@ METHODS = {'Tiền mặt': 'CASH', 'Chuyển khoản': 'TRANSFER', 'Công nợ':
 
 
 def create_order(conn, user, data, key=None):
+    from .commerce import expire_pending
+    expire_pending(conn)
     key = key or data.get('idempotency_key')
     if not isinstance(key, str) or not 8 <= len(key) <= 128:
         fail('Cần Idempotency-Key từ 8 đến 128 ký tự để tránh tạo trùng đơn')
@@ -38,7 +40,11 @@ def create_order(conn, user, data, key=None):
             fail('Sản phẩm ngừng bán hoặc xuất hiện nhiều lần trong đơn')
         seen.add(p['id'])
         qty = quantity(item.get('quantity'))
-        price = p['promo_price'] if p['promo_price'] is not None and (p['promo_until'] or '') >= date.today().isoformat() else p['price']
+        from .commerce import effective_price,sale_remaining,available_batches
+        price,timed=effective_price(conn,p)
+        if timed and (qty>sale_remaining(conn,timed) or (timed['batch_id'] and qty>int(available_batches(conn,p['id'])[0]['remaining']))):
+            fail('Số lượng vượt giới hạn sale theo giờ còn lại.',409)
+        p['_timed_sale_id']=timed['id'] if timed else None
         price = money(price)
         subtotal = money(rounded(qty * price))
         normalized.append((p, qty, price, subtotal))
@@ -46,6 +52,15 @@ def create_order(conn, user, data, key=None):
     customer = record(conn, 'customers', data['customer_id']) if data.get('customer_id') else None
     discount = money(data.get('discount', 0))
     points = number(data.get('points_redeemed', 0), 'Điểm đổi', integer=True)
+    campaign, rescue_discounts, rescue_sets = None, {}, 0
+    if data.get('rescue_campaign_id') is not None:
+        if discount or points:
+            fail('Combo giải cứu không cộng thêm giảm giá thủ công hoặc đổi điểm.')
+        from .rescue import checkout_discount
+        rescue_sets = quantity(data.get('rescue_sets', 1))
+        campaign, discount, rescue_discounts = checkout_discount(conn, data['rescue_campaign_id'], rescue_sets, normalized)
+    elif data.get('rescue_sets'):
+        fail('Cần chọn combo giải cứu cho số lượt sử dụng.')
     if points and (not customer or points > customer['points']):
         fail('Khách hàng không đủ điểm')
     if discount + points * 100 > gross:
@@ -80,13 +95,17 @@ def create_order(conn, user, data, key=None):
     ident = conn.execute('''INSERT INTO orders(order_code,created_by,total_amount,payment_method,apartment,customer_note,status,customer_id,cashier_id,gross_amount,discount,points_redeemed,points_earned,managed,idempotency_key,request_hash,fulfillment)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?,?)''', (code, user['name'], total, '+'.join(m for m, _ in prepared_payments), address, str(data.get('customer_note', ''))[:500], status, customer['id'] if customer else None, user['id'], gross, discount, points, earned, key, fingerprint, fulfillment)).lastrowid
     net_left = total
+    if campaign:
+        conn.execute('UPDATE orders SET rescue_campaign_id=?,rescue_sets=?,rescue_name=? WHERE id=?',
+                     (campaign['id'],rescue_sets,campaign['name'],ident))
     for index, (p, qty, price, subtotal) in enumerate(normalized):
-        net = net_left if index == len(normalized) - 1 else min(net_left, rounded(total * subtotal / gross) if gross else 0)
+        net = subtotal-rescue_discounts.get(p['id'],0) if campaign else (net_left if index == len(normalized) - 1 else min(net_left, rounded(total * subtotal / gross) if gross else 0))
         net_left -= net
         allocations = take_stock(conn, user, p['id'], qty, 'SALE', ident)
         cost = sum(q * c for _, q, c in allocations) / qty
         item_id = conn.execute('''INSERT INTO order_items(order_id,product_name,shelf_location,quantity,price,subtotal,is_picked,product_id,cost_price,net_subtotal)
             VALUES (?,?,?,?,?,?,?,?,?,?)''', (ident, p['product_name'], p['shelf_location'], qty, price, subtotal, int(fulfillment == 'PICKUP'), p['id'], cost, net)).lastrowid
+        if p.get('_timed_sale_id'):conn.execute('UPDATE order_items SET timed_sale_id=? WHERE id=?',(p['_timed_sale_id'],item_id))
         conn.executemany('INSERT INTO order_allocations(order_item_id,batch_id,quantity,cost_price) VALUES (?,?,?,?)', [(item_id, b, q, c) for b, q, c in allocations])
     for method, amount in prepared_payments:
         payment(conn, user, amount, method, 'SALE', ident, ident)

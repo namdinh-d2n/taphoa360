@@ -8,7 +8,7 @@ import threading
 import config
 
 LOCK = threading.RLock()
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 9
 
 
 def connect():
@@ -109,7 +109,7 @@ def _migrate_v3():
         conn.execute("INSERT INTO schema_migrations(version) VALUES (3)")
 
 
-def migrate():
+def _migrate_v4():
     _migrate_v3()
     # Only one application process is supported (backup/restore uses a process lock).
     with reading() as conn:
@@ -138,6 +138,74 @@ def migrate():
         conn.execute('INSERT INTO schema_migrations(version) VALUES (4)')
 
 
+def _migrate_v5():
+    _migrate_v4()
+    with reading() as conn:
+        if one(conn, 'SELECT version FROM schema_migrations WHERE version=5'):
+            return
+        backup_dir = Path(config.SQLITE_PATH).parent / 'backups'
+        backup_dir.mkdir(exist_ok=True)
+        target = sqlite3.connect(backup_dir / ('before-v5-' + datetime.now().strftime('%Y%m%d-%H%M%S-%f') + '.db'))
+        try:
+            conn.backup(target)
+        finally:
+            target.close()
+    with transaction() as conn:
+        conn.execute('''CREATE TABLE IF NOT EXISTS supplier_products (
+            supplier_id INTEGER NOT NULL REFERENCES suppliers(id),
+            product_id INTEGER NOT NULL REFERENCES products(id),
+            cost_price INTEGER NOT NULL CHECK(cost_price>=0),
+            supplier_sku TEXT NOT NULL DEFAULT '',
+            is_sample_price INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY(supplier_id,product_id)
+        )''')
+        # Use the latest receipt line for each pair; never rewrite receipt prices or stock.
+        conn.execute('''INSERT OR IGNORE INTO supplier_products(supplier_id,product_id,cost_price)
+            SELECT r.supplier_id,i.product_id,i.cost_price FROM purchase_items i
+            JOIN purchase_receipts r ON r.id=i.receipt_id JOIN products p ON p.id=i.product_id
+            WHERE i.id=(SELECT MAX(j.id) FROM purchase_items j
+                JOIN purchase_receipts s ON s.id=j.receipt_id
+                WHERE s.supplier_id=r.supplier_id AND j.product_id=i.product_id)''')
+        conn.execute('INSERT INTO schema_migrations(version) VALUES (5)')
+
+
+def _migrate_v6():
+    _migrate_v5()
+    with reading() as conn:
+        if one(conn, 'SELECT version FROM schema_migrations WHERE version=6'):
+            return
+        folder = Path(config.SQLITE_PATH).parent / 'backups'
+        folder.mkdir(exist_ok=True)
+        target = sqlite3.connect(folder / ('before-v6-' + datetime.now().strftime('%Y%m%d-%H%M%S-%f') + '.db'))
+        try:
+            conn.backup(target)
+        finally:
+            target.close()
+    with transaction() as conn:
+        conn.execute('''CREATE TABLE IF NOT EXISTS rescue_campaigns (
+            id INTEGER PRIMARY KEY, name TEXT NOT NULL,
+            batch_id INTEGER NOT NULL REFERENCES stock_batches(id),
+            product_id INTEGER NOT NULL REFERENCES products(id),
+            partner_id INTEGER NOT NULL REFERENCES products(id),
+            price INTEGER NOT NULL CHECK(price>=0), max_sets INTEGER NOT NULL CHECK(max_sets>0),
+            expires_on TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1,
+            user_id INTEGER REFERENCES users(id), created_at TEXT DEFAULT (datetime('now','localtime'))
+        )''')
+        add_columns(conn, 'orders', {
+            'rescue_campaign_id': 'INTEGER REFERENCES rescue_campaigns(id)',
+            'rescue_sets': 'INTEGER NOT NULL DEFAULT 0', 'rescue_name': "TEXT NOT NULL DEFAULT ''"})
+        conn.execute('CREATE INDEX IF NOT EXISTS order_rescue_campaign ON orders(rescue_campaign_id)')
+        conn.execute('INSERT INTO schema_migrations(version) VALUES (6)')
+
+
+def migrate():
+    _migrate_v6()
+    from .commerce_schema import migrate_commerce
+    migrate_commerce()
+    from .catalog_schema import migrate_catalog
+    migrate_catalog()
+    from .online_workflow import migrate_workflow
+    migrate_workflow()
 SCHEMA = '''
 CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY, applied_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE COLLATE NOCASE, name TEXT NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('owner','cashier','inventory','shipper')), employee_id INTEGER REFERENCES employees(id), active INTEGER DEFAULT 1, created_at TEXT DEFAULT CURRENT_TIMESTAMP);

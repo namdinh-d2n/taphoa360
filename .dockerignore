@@ -10,3 +10,7 @@
 !static/*
 !templates/
 !templates/*.html
+!data/
+!data/*.json
+!static/catalog-images/
+!static/catalog-images/*

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{{ invoice.code }}</title>
+    <link rel="stylesheet" href="/static/retail.css?v=3.1" />
+    <script src="/static/receipt.js?v=3.1" defer></script>
+  </head>
+  <body class="receipt-page">
+    <main class="receipt">
+      <h1>TẠP HÓA 360</h1>
+      <h2>HÓA ĐƠN ĐƠN HÀNG ONLINE</h2>
+      <p>
+        {{ invoice.code }}<br />Đơn: {{ document.code }}<br />Xuất lúc: {{
+        invoice.issued_at }}
+      </p>
+      <p>
+        Người nhận: {{ document.receiver }} · {{ document.phone }}<br />{{
+        document.address }}
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Mặt hàng / quy cách</th>
+            <th>SL</th>
+            <th>Tiền hàng</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in document['items'] %}
+          <tr>
+            <td>{{ item.product_name }}<small>{{ item.unit }}</small></td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ '{:,.0f}'.format(item.charged_total) }} đ</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p>
+        Tiền hàng sau ưu đãi/đổi điểm: {{ '{:,.0f}'.format(document.goods_total)
+        }} đ<br />Phí giao: {{ '{:,.0f}'.format(document.shipping_fee) }} đ
+      </p>
+      <h2>Tổng khi duyệt: {{ '{:,.0f}'.format(document.total) }} đ</h2>
+      <p>
+        Phương thức: {{ document.payment_method }}<br />Đã đối chiếu nhận tiền
+        khi duyệt: {{ '{:,.0f}'.format(document.paid) }} đ
+      </p>
+      {% if current.status=='COMPLETED' %}
+      <h2>Kết quả kiểm hàng khi nhận</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Mặt hàng</th>
+            <th>Thực nhận</th>
+            <th>Thực tính</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in current['items'] %}
+          <tr>
+            <td>{{ item.product_name }}</td>
+            <td>{{ item.accepted }}</td>
+            <td>{{ '{:,.0f}'.format(item.charged_total) }} đ</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p>
+        Tổng thực tế: {{ '{:,.0f}'.format(current.total) }} đ<br />Cần hoàn: {{
+        '{:,.0f}'.format(current.refund_due) }} đ<br />Đã hoàn: {{
+        '{:,.0f}'.format(current.refund_paid) }} đ
+      </p>
+      {% endif %}{% if current.status=='CANCELLED' %}
+      <p>
+        Đơn đã hủy. Cần hoàn {{ '{:,.0f}'.format(current.refund_due) }} đ; đã
+        hoàn {{ '{:,.0f}'.format(current.refund_paid) }} đ.
+      </p>
+      {% endif %}
+      <p>Khách kiểm hàng khi nhận; thay đổi/hoàn tiền có lịch sử riêng.</p>
+      <p class="hint">
+        Hóa đơn bán hàng nội bộ, chưa phải hóa đơn điện tử thuế.
+      </p>
+      <button id="print" class="primary no-print">In / lưu hóa đơn</button>
+    </main>
+  </body>
+</html>

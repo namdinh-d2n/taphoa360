@@ -1,6 +1,7 @@
 import { state, api, el, setRefresh, label, can, toast } from "./ui.js?v=3.1";
 import { navIcon } from "./icons.js?v=3.1";
 import { renderPOS } from "./pos.js?v=3.1";
+import { renderOnline } from "./online-admin.js?v=4.0";
 import {
   renderProducts,
   renderInventory,
@@ -21,6 +22,7 @@ import {
 } from "./workspaces.js?v=3.1";
 
 const pages = {
+  online: ["Đơn & thu chi online", "Duyệt thanh toán, xuất hóa đơn, soạn hàng và điều phối giao.", "/online", "▣", ["cashier","inventory","shipper"], renderOnline],
   owner_portal: [
     "Quản lý cửa hàng",
     "Chủ tiệm quản lý tất cả hoạt động và các khu làm việc.",

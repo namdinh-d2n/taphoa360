@@ -35,6 +35,10 @@ if PUBLIC_ORIGIN:
             or (PRODUCTION and (_origin.scheme != 'https' or _origin.hostname not in ALLOWED_HOSTS))):
         raise ValueError('PUBLIC_ORIGIN must be an HTTPS origin with a hostname in ALLOWED_HOSTS for production')
 MAX_REQUEST_BYTES = 1_048_576
+AI_INVOICE_ENABLED = env_bool('AI_INVOICE_ENABLED', True)
+AI_IMAGE_MAX_BYTES = 8 * 1024 * 1024
+AI_IMAGE_MAX_PIXELS = 16_000_000
+AI_INVOICE_MODEL_PATH = BASE_DIR / '.local' / 'models' / 'latin_PP-OCRv5_rec_mobile.onnx'
 
 HOST = os.getenv("HOST", "127.0.0.1")
 PORT = int(os.getenv("PORT", "8000"))

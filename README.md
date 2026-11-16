@@ -104,6 +104,59 @@ Có thể dùng `BAT_TAPHOA360.bat --no-browser` nếu không muốn tự mở t
 
 ## Quy trình sử dụng
 
+### Thêm hàng nhanh và danh mục nhà cung cấp
+
+- Vào **Nhà cung cấp → Sản phẩm cung cấp** để xem danh mục riêng, thêm sản phẩm
+  có sẵn hoặc tạo sản phẩm mới. Một mặt hàng có thể thuộc nhiều nhà cung cấp;
+  mỗi nơi có giá nhập và mã hàng riêng. Có thể sửa giá/mã trong tab này.
+- Vào **Kho hàng → + Nhập hàng**, chọn nhà cung cấp rồi gõ tên, SKU, mã vạch
+  hoặc mã hàng nhà cung cấp để tìm. Tìm kiếm hỗ trợ tiếng Việt không dấu,
+  phím lên/xuống và Enter. Chỉ hàng đang bán của nhà cung cấp được đưa vào kết quả.
+- Nếu chưa có hàng, bấm **+ Thêm sản phẩm mới** ngay ở dòng nhập; điền tên,
+  đơn vị, giá bán, giá nhập và mã hàng tùy chọn. Để trống SKU để tự tạo mã.
+  Dùng **+ Hàng có sẵn vào danh mục** để liên kết sản phẩm đã có trong cửa hàng.
+  Thao tác này giữ nguyên các dòng, số lượng, mã lô, hạn dùng và ghi chú của phiếu.
+- Lưu danh mục chỉ tạo hàng/liên kết, chưa tăng tồn hay phát sinh công nợ.
+  Bấm **Ghi nhận phiếu nhập** mới tăng tồn, ghi thanh toán và công nợ. Giá nhập
+  được gợi ý theo nhà cung cấp và có thể sửa theo hóa đơn; giá thực nhập trở thành
+  giá gợi ý cho lần tiếp theo. Giá trên phiếu và lô cũ được giữ nguyên.
+- Khi đổi nhà cung cấp, chọn lại sản phẩm theo danh mục mới. Các ô số lượng,
+  mã lô, hạn dùng và ghi chú vẫn được giữ.
+
+Schema 5 bổ sung `supplier_products`, tự sao lưu trước nâng cấp và lấy giá nhập
+gần nhất của từng cặp nhà cung cấp/sản phẩm từ phiếu cũ để tạo danh mục ban đầu.
+Không tự gán các hàng chưa từng nhập cho một nhà cung cấp. Bản sao trước nâng cấp
+được giữ để phục hồi thủ công; giao diện khôi phục yêu cầu đúng schema hiện tại.
+
+API danh mục: `GET/POST /api/v1/suppliers/{id}/products` (chủ tiệm/kiểm kho).
+POST với `product_id`, `cost_price`, `supplier_sku` để thêm/cập nhật liên kết;
+bỏ `product_id` và gửi `product_name`, `unit`, `price` để tạo hàng mới cùng liên kết
+trong một transaction. `sku` và `barcode` là tùy chọn khi tạo mới.
+
+### Quy trình vận hành
+
+**Giải cứu hàng cận hạn:** vào **Đề xuất thông minh** để xem lô sắp hết hạn,
+mục tiêu bán mỗi ngày và gợi ý ghép hàng. Chủ tiệm tính thử giá/lãi rồi bật combo;
+thu ngân chọn bán tại POS. Phân tích dùng lịch sử cửa hàng, không tốn phí API.
+Xem [RESCUE.md](RESCUE.md) về cách dùng, giá vốn, giới hạn lượt và điều kiện dự báo.
+
+**Cửa hàng online:** mở `/shop` để khách xem hàng không cần đăng nhập; khi đặt giao,
+khách đăng nhập số điện thoại để giữ giỏ, theo dõi đơn và tích điểm. Tiệm khai báo
+vùng/phí giao, COD hoặc QR, xử lý thiếu hàng, kiểm hàng khi nhận, hoàn tiền phần bị
+từ chối, danh mục hàng tươi/đông lạnh và sale theo giờ trong mục **Cửa hàng online**.
+Xem [ONLINE.md](ONLINE.md) về luồng khách, vận hành cuối ngày, quyền và API.
+
+Đơn QR mới hiện mã ngay sau xác nhận đặt hàng, giữ hàng 30 phút. Khách bấm
+**Xác nhận đã thanh toán** để gửi đối chiếu; thu ngân/chủ tiệm duyệt tiền thực
+nhận mới xuất hóa đơn nội bộ và chuyển soạn/giao. Vào **Đơn & thu chi online**
+(`/online`) để lọc đơn, phân công, soạn từng món, đối chiếu tiền, thu/chi/hoàn và
+nhận bàn giao COD; mặc định chủ tiệm phụ trách, có thể chỉ định thu ngân/điều phối.
+
+**AI đọc ảnh hóa đơn:** trong phiếu nhập, bấm **AI đọc ảnh hóa đơn** để nhận dạng
+và ghép sản phẩm, kiểm tra kết quả rồi đưa vào bản nháp. AI chạy cục bộ, không dùng
+API trả phí và chỉ ghi kho sau khi người dùng xác nhận phiếu. Xem [AI_LOCAL.md](AI_LOCAL.md)
+để biết cách cài trên máy khác, định dạng ảnh và giới hạn nhận dạng.
+
 1. **Thiết lập:** tạo chủ tiệm; thêm hồ sơ nhân viên, tài khoản và liên kết nhân viên.
 2. **Hàng hóa:** thêm SKU, mã vạch, đơn vị, giá, khu/kệ và ngưỡng tồn. Thêm nhà cung cấp.
 3. **Nhập kho:** lập phiếu có nhiều dòng, số lượng, giá vốn, mã lô và hạn dùng; phần

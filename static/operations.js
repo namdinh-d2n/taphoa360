@@ -1,3 +1,5 @@
+import { purchaseForm, supplierProfile } from "./purchasing.js?v=3.1";
+import { rescuePanel } from "./rescue.js?v=3.1";
 import {
   replace,
   api,
@@ -53,6 +55,9 @@ const productColumns = [
         {},
         el("strong", {}, p.product_name),
         el("small", {}, p.sku + (p.barcode ? " · " + p.barcode : "")),
+        p.catalog_origin === "REFERENCE"
+          ? el("small", {}, "Giá bán tham khảo · giá nhập mẫu · chưa tạo tồn")
+          : null,
       ),
   },
   { label: "Giá bán", render: (p) => money(p.selling_price) },
@@ -68,7 +73,14 @@ const productColumns = [
 ];
 
 export async function renderProducts(content) {
-  const data = await api("/products");
+  const [data, groups] = await Promise.all([
+    api("/products"),
+    api("/shop/categories"),
+  ]);
+  const categoryOptions = [
+    ["Thiết yếu", "Thiết yếu"],
+    ...groups.flatMap((g) => g.categories.map((c) => [c, g.name + " / " + c])),
+  ];
   const body = el("div"),
     search = el("input", {
       placeholder: "Tìm tên hàng, SKU hoặc mã vạch",
@@ -77,7 +89,11 @@ export async function renderProducts(content) {
   function edit(p = {}) {
     const fields = [
       text("product_name", "Tên hàng"),
-      text("sku", "SKU"),
+      text('brand','Thương hiệu / nhãn hàng',{required:false,maxLength:80}),
+      text("sku", "SKU", {
+        required: !!p.id,
+        placeholder: p.id ? "" : "Để trống để tự tạo mã",
+      }),
       text("barcode", "Mã vạch", { required: false }),
       num("price", "Giá bán"),
       num("cost_price", "Giá vốn nhập gần nhất"),
@@ -85,6 +101,26 @@ export async function renderProducts(content) {
       text("zone_code", "Khu / kệ", { value: "A1" }),
       text("shelf_location", "Tầng / ô", { required: false }),
       num("min_stock", "Ngưỡng nhập thêm", 5, { step: "1" }),
+      select("category", "Danh mục online", categoryOptions, {
+        value: "Thiết yếu",
+      }),
+      select("storage_kind", "Loại hàng / bảo quản", [
+        ["DRY", "Đồ khô"],
+        ["FRESH", "Hàng tươi"],
+        ["FROZEN", "Đông lạnh"],
+        ["CHILLED", "Bảo quản mát"],
+        ["HOUSEHOLD", "Gia dụng"],
+      ]),
+      text("description", "Mô tả / quy cách / bảo quản", {
+        required: false,
+        maxLength: 2000,
+      }),
+      {
+        name: "online_enabled",
+        label: "Bán trên cửa hàng online",
+        type: "checkbox",
+        value: true,
+      },
       { name: "active", label: "Đang bán", type: "checkbox", value: true },
     ];
     if (p.id && !owner())
@@ -167,145 +203,6 @@ export async function renderProducts(content) {
     ),
   );
   draw();
-}
-
-function purchaseForm(products, suppliers) {
-  if (!suppliers.length)
-    throw new Error("Hãy thêm nhà cung cấp trước khi nhập hàng");
-  let lines = [];
-  const lineBox = el("div"),
-    error = el("p", { class: "error" }),
-    totalLabel = el("strong");
-  const fields = [
-    select(
-      "supplier_id",
-      "Nhà cung cấp",
-      suppliers.map((s) => [s.id, s.name]),
-      { numeric: true },
-    ),
-    select("method", "Phương thức trả", paymentOptions, { value: "TRANSFER" }),
-    num("paid", "Đã trả (bỏ trống để trả đủ)", null, { required: false }),
-    text("note", "Ghi chú", { required: false }),
-  ];
-  const form = el(
-    "form",
-    {},
-    el(
-      "div",
-      { class: "form-grid" },
-      fields.map((f) => field(f)),
-    ),
-  );
-  function total() {
-    return lines.reduce(
-      (s, line) =>
-        s + Math.round(Number(line.quantity.value) * Number(line.cost.value)),
-      0,
-    );
-  }
-  function add() {
-    const p = el(
-      "select",
-      {},
-      products
-        .filter((p) => p.active)
-        .map((p) => el("option", { value: p.id }, p.product_name)),
-    );
-    const quantity = el("input", {
-        type: "number",
-        min: 1,
-        step: 1,
-        value: 1,
-        required: true,
-      }),
-      cost = el("input", {
-        type: "number",
-        min: 0,
-        step: 1,
-        value: products.find((x) => x.id === Number(p.value))?.cost_price || 0,
-        required: true,
-      }),
-      lot = el("input", { placeholder: "Mã lô (tự tạo nếu trống)" }),
-      expiry = el("input", { type: "date", min: today() });
-    const line = { p, quantity, cost, lot, expiry };
-    lines.push(line);
-    const row = el(
-      "div",
-      { class: "form-section" },
-      el(
-        "div",
-        { class: "form-grid" },
-        el("label", {}, "Sản phẩm", p),
-        el("label", {}, "Số lượng", quantity),
-        el("label", {}, "Giá vốn / đơn vị", cost),
-        el("label", {}, "Mã lô", lot),
-        el("label", {}, "Hạn sử dụng", expiry),
-      ),
-      button(
-        "Bỏ dòng",
-        () => {
-          lines = lines.filter((x) => x !== line);
-          row.remove();
-          totalLabel.textContent = money(total());
-        },
-        "small",
-      ),
-    );
-    p.addEventListener("change", () => {
-      cost.value =
-        products.find((x) => x.id === Number(p.value))?.cost_price || 0;
-      totalLabel.textContent = money(total());
-    });
-    [quantity, cost].forEach((x) =>
-      x.addEventListener(
-        "input",
-        () => (totalLabel.textContent = money(total())),
-      ),
-    );
-    lineBox.append(row);
-    totalLabel.textContent = money(total());
-  }
-  const save = el(
-    "button",
-    { type: "submit", class: "primary" },
-    "Ghi nhận phiếu nhập",
-  );
-  form.append(
-    lineBox,
-    toolbar(
-      button("+ Thêm dòng", add),
-      el("span", { class: "spacer" }),
-      totalLabel,
-    ),
-    error,
-    el("div", { class: "form-actions" }, button("Hủy", closeModal), save),
-  );
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    save.disabled = true;
-    error.textContent = "";
-    try {
-      const data = readFields(form, fields);
-      data.paid = data.paid ?? total();
-      data.items = lines.map((l) => ({
-        product_id: Number(l.p.value),
-        quantity: Number(l.quantity.value),
-        cost_price: Number(l.cost.value),
-        lot_code: l.lot.value,
-        expires_on: l.expiry.value || null,
-      }));
-      await api("/purchases", data);
-      closeModal();
-      toast("Đã nhập kho");
-      await refresh();
-    } catch (err) {
-      error.textContent = err.message;
-    } finally {
-      save.disabled = false;
-    }
-  });
-  showModal("Nhập hàng từ nhà cung cấp", form);
-  add();
 }
 
 export async function renderInventory(content) {
@@ -463,6 +360,7 @@ export async function renderParties(content, kind) {
       p,
     );
   async function history(p) {
+    if (!customer) return supplierProfile(p, "debt");
     const entries = await api("/accounts/" + kind + "/" + p.id);
     const blocks = [
       panel(
@@ -508,9 +406,24 @@ export async function renderParties(content, kind) {
             { class: "hint" },
             "Mỗi 10.000đ tiền hàng sau giảm giá tích 1 điểm. Mỗi điểm đổi được 100đ. Điểm được điều chỉnh khi trả hàng.",
           )
-        : null,
+        : el(
+            "p",
+            { class: "hint" },
+            "Nhà cung cấp mang nhãn “NCC mẫu” là dữ liệu minh họa; cần thay bằng đối tác và báo giá thật.",
+          ),
       table(data, [
-        { label: "Tên", key: "name" },
+        {
+          label: "Tên",
+          render: (p) =>
+            el(
+              "div",
+              {},
+              p.name,
+              !customer && p.is_sample
+                ? el("small", {}, "Mẫu · chưa có đối tác/báo giá thật")
+                : null,
+            ),
+        },
         { label: "Điện thoại", key: "phone" },
         ...(customer
           ? [
@@ -524,6 +437,9 @@ export async function renderParties(content, kind) {
           render: (p) =>
             actions(
               button("Sửa", () => edit(p), "small"),
+              !customer
+                ? button("Sản phẩm cung cấp", () => supplierProfile(p), "small")
+                : null,
               button("Lịch sử", () => history(p), "small"),
               p.debt > 0
                 ? button(
@@ -983,9 +899,16 @@ export async function renderMap(content) {
 }
 
 export async function renderSuggestions(content) {
-  const data = await api("/suggestions");
+  const [suggestions, rescue] = await Promise.all([
+    api("/suggestions"),
+    api("/rescue"),
+  ]);
+  const data = suggestions.filter(
+    (s) => !["EXPIRING", "EXPIRED"].includes(s.type),
+  );
   replace(
     content,
+    rescuePanel(rescue),
     panel(
       "Đề xuất từ dữ liệu cửa hàng",
       el(

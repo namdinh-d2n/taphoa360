@@ -15,13 +15,21 @@ import {
   label,
 } from "./ui.js?v=3.1";
 import { renderPOS } from "./pos.js?v=3.1";
-import { renderInventory, renderDashboard, orderDetail } from "./operations.js?v=3.1";
+import {
+  renderInventory,
+  renderDashboard,
+  orderDetail,
+} from "./operations.js?v=3.1";
 
 function workspace(content, links) {
   const body = el("div");
   replace(
     content,
-    el("div", {class: "workspace-links"}, ...links.map(([name, path]) => link(name, path))),
+    el(
+      "div",
+      { class: "workspace-links" },
+      ...links.map(([name, path]) => link(name, path)),
+    ),
     body,
   );
   return body;
@@ -29,6 +37,7 @@ function workspace(content, links) {
 
 export async function renderOwner(content) {
   const body = workspace(content, [
+    ["Đơn & thu chi online →", "/online"],
     ["Khu thu ngân →", "/cashier"],
     ["Khu kiểm kho →", "/inventory"],
     ["Khu giao hàng →", "/shipper"],
@@ -39,6 +48,7 @@ export async function renderOwner(content) {
 
 export async function renderCashier(content) {
   const body = workspace(content, [
+    ["Duyệt tiền & đơn online", "/online"],
     ["Mở / chốt ca", "/cash"],
     ["Đơn hàng & đổi trả", "/orders"],
     ["Khách hàng", "/customers"],
@@ -49,6 +59,7 @@ export async function renderCashier(content) {
 
 export async function renderStockroom(content) {
   const body = workspace(content, [
+    ["Soạn & điều phối đơn online", "/online"],
     ["Sản phẩm", "/products"],
     ["Đơn cần soạn", "/orders"],
     ["Sơ đồ kệ", "/store_map"],
