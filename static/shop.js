@@ -702,6 +702,7 @@ async function refreshUser() {
     if (error.status !== 401) throw error;
     state.user = null;
   }
+  startErrandNotifications().catch(()=>{});
   $("#account").textContent = state.user
     ? state.user.name + " · " + state.user.points + " điểm"
     : "Đăng nhập";
@@ -1351,3 +1352,34 @@ setInterval(async () => {
   }
 }, 8000);
 init().catch((error) => ($("#page-error").textContent = error.message));
+
+let errandView=null,errandStream=null;
+async function openErrands(event){
+  event?.preventDefault();
+  if(!state.user){authDialog(()=>openErrands());return;}
+  document.getElementById("browse").hidden=true;
+  document.querySelector(".cart-dock").hidden=true;
+  document.getElementById("errand-inline").hidden=false;
+  document.getElementById("modal-close").onclick=()=>document.getElementById("modal").close();
+  if(!errandView){const module=await import("./errands-shop.js?v=2");errandView=module.mountErrands(document.getElementById("errand-root"));}
+  document.getElementById("errand-inline").scrollIntoView({behavior:"smooth",block:"start"});
+}
+document.getElementById("errand-entry").addEventListener("click",openErrands);
+document.getElementById("errand-service-open").addEventListener("click",openErrands);
+document.getElementById("errand-back").addEventListener("click",()=>{
+  document.getElementById("errand-inline").hidden=true;
+  document.getElementById("browse").hidden=false;
+  document.querySelector(".cart-dock").hidden=false;
+  errandView?.close();errandView=null;
+});
+async function startErrandNotifications(){
+  if(!state.user){errandStream?.close();errandStream=null;return;}
+  if(errandStream)return;
+  const {connectErrands}=await import("./errands-live.js?v=2");
+  errandStream=connectErrands("/api/shop/errands/events",async()=>{
+    const result=await api("/errands");
+    const waiting=result.orders.filter(o=>["ESTIMATE_REVIEW","CHANGE_REVIEW","FINAL_REVIEW"].includes(o.status)).length;
+    const badge=document.getElementById("errand-notifications");
+    if(badge)badge.textContent=waiting?`(${waiting} cần duyệt)`:"";
+  });
+}

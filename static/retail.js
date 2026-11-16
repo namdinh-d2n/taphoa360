@@ -21,7 +21,10 @@ import {
   renderDelivery,
 } from "./workspaces.js?v=3.1";
 
+import { renderErrands } from "./errands-admin.js?v=2";
+
 const pages = {
+  errands: ["Đi chợ hộ", "Khách duyệt hàng, quyết toán và xử lí phản hồi.", "/errands", "▣", ["cashier","inventory","shipper"], renderErrands],
   online: ["Đơn & thu chi online", "Duyệt thanh toán, xuất hóa đơn, soạn hàng và điều phối giao.", "/online", "▣", ["cashier","inventory","shipper"], renderOnline],
   owner_portal: [
     "Quản lý cửa hàng",

@@ -12,6 +12,7 @@ class ProductionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='taphoa-production-') as folder:
             env = {**os.environ, 'APP_ENV': 'production', 'DB_TYPE': 'sqlite',
                    'SEED_DEMO': 'false', 'RELOAD': 'false', 'COOKIE_SECURE': 'true',
+                   'SMTP_HOST': '',
                    'ENABLE_DOCS': 'false', 'ALLOWED_HOSTS': 'shop.example,127.0.0.1,healthcheck.railway.app',
                    'SETUP_TOKEN': 'test-only-setup-token-' + 'x' * 32,
                    'SQLITE_PATH': str(Path(folder) / 'store.db'), **overrides}

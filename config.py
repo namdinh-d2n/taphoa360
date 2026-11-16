@@ -34,6 +34,17 @@ if PUBLIC_ORIGIN:
             or _origin.query or _origin.fragment or _origin.username or _origin.password
             or (PRODUCTION and (_origin.scheme != 'https' or _origin.hostname not in ALLOWED_HOSTS))):
         raise ValueError('PUBLIC_ORIGIN must be an HTTPS origin with a hostname in ALLOWED_HOSTS for production')
+# SMTP credentials belong in .env, never in browser-facing settings.
+SMTP_HOST = os.getenv('SMTP_HOST', '').strip()
+SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))
+SMTP_USERNAME = os.getenv('SMTP_USERNAME', '').strip()
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
+SMTP_FROM = os.getenv('SMTP_FROM', '').strip()
+SMTP_SECURITY = os.getenv('SMTP_SECURITY', 'starttls').strip().lower()
+if not 1 <= SMTP_PORT <= 65535 or SMTP_SECURITY not in {'starttls', 'ssl'}:
+    raise ValueError('SMTP requires a valid port and SMTP_SECURITY=starttls or ssl')
+if any('\r' in value or '\n' in value for value in (SMTP_HOST, SMTP_FROM, SMTP_USERNAME)):
+    raise ValueError('SMTP configuration must not contain line breaks')
 MAX_REQUEST_BYTES = 1_048_576
 AI_INVOICE_ENABLED = env_bool('AI_INVOICE_ENABLED', True)
 AI_IMAGE_MAX_BYTES = 8 * 1024 * 1024

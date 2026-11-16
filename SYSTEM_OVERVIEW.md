@@ -43,6 +43,44 @@ Trang `register.html`/`static/register.js` gửi yêu cầu công khai, chưa t�
 Chỉ chủ tiệm được duyệt; tạo tài khoản, liên kết/tạo hồ sơ nhân viên và đóng yêu cầu trong
 cùng transaction. Băm mật khẩu trong yêu cầu được xóa sau khi duyệt/từ chối.
 
+## Khôi phục tài khoản qua email OTP (schema 11)
+
+`retail/password_recovery.py` quản lý ba bước: gửi email OTP, xác thực OTP và đặt
+mật khẩu mới. Mã 6 số có hiệu lực 10 phút, tối đa 5 lần nhập sai. Gửi lại cách
+nhau ít nhất 60 giây, hủy yêu cầu OTP cũ; giới hạn 5 email/giờ cho một hộp thư và
+20 yêu cầu/giờ cho một địa chỉ truy cập. Thông báo giống nhau cho email đã/chưa
+đăng ký và tài khoản đã khóa.
+
+Mỗi yêu cầu có challenge ngẫu nhiên 256 bit; chỉ SHA-256 của challenge được lưu.
+OTP lưu HMAC-SHA256 với khóa là challenge gốc (không có trong database). Xác thực
+so sánh hằng thời gian, tăng số lần sai và commit trước khi trả lỗi. Khi đúng,
+transaction xóa OTP và cấp quyền đặt lại mật khẩu ngẫu nhiên 256 bit, chỉ lưu
+SHA-256, có hiệu lực 5 phút. Hai yêu cầu xác thực/sử dụng đồng thời chỉ một yêu
+cầu thành công. API đặt mật khẩu mới kiểm tra quyền này độc lập với giao diện.
+
+Đổi mật khẩu/email/quyền hoặc khôi phục backup thu hồi OTP và quyền đặt lại mật
+khẩu; đổi mật khẩu thu hồi phiên đăng nhập. Dấu vân tay mật khẩu/email ngăn sử
+dụng mã sau khi dữ liệu tài khoản thay đổi ngoài API. SMTP dùng STARTTLS/SSL có
+kiểm tra chứng chỉ, gửi sau commit ngoài khóa ghi. Lỗi gửi thư chỉ xóa OTP của
+lần gửi đó; không đưa mã hay lỗi chứa thông tin SMTP vào log.
+
+`users.email` duy nhất khi khác rỗng. Công cụ `scripts/set_recovery_email.py` gắn
+email cho chủ tiệm cũ từ máy chủ, có backup và audit. Schema 11 sao lưu trước
+nâng cấp và xóa token từ cơ chế gửi liên kết cũ; giữ nguyên email và nghiệp vụ.
+
+## Đi chợ hộ (schema 12–13)
+
+`errand_schema.py` migration cộng thêm; `errands.py` giữ quy tắc nghiệp vụ,
+`errand_api.py` nối xác thực khách/nhân viên và minh chứng riêng tư. UI dùng
+`errands-view.js` chung cho trang khách `errands-shop.js` và khu nhân viên
+`errands-admin.js`. Schema 13 thêm tỉnh/cửa hàng demo và phương thức thanh toán. `live_events.py` đánh thức SSE sau commit; revision theo quyền khách/nhân viên, không cần polling. QR do server tính từ số tiền đã duyệt còn phải thu. Khách duyệt dự kiến, từng thay thế và bản chốt cuối, kiểm tra
+phiên bản và thời hạn tại server trước khi mua. `errand_money` nối với `payments`
+để ghi thu/hoàn/chi và chốt ca, có mã chống trùng và mã biên nhận duy nhất.
+
+Xem ERRANDS.md về trạng thái, phân quyền, kiểm hàng và quyết toán. Báo cáo tách
+chỉ tiêu đi chợ hộ; ảnh nằm ngoài SQLite và phải sao lưu cùng dữ liệu. Tất cả
+bảng đi chợ hộ được loại khỏi snapshot review để ẩn nội dung riêng của khách.
+
 ## Dữ liệu và bất biến
 
 Schema 9 bổ sung luồng QR trả trước (`PREPAY`): giữ hàng khi tạo đơn, QR/số tiền/tài

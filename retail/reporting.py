@@ -32,7 +32,9 @@ def report(conn, start, end):
         WHERE date(opened_at) BETWEEN ? AND ? ORDER BY s.id DESC''', (start, end))
     statuses = rows(conn, 'SELECT status,COUNT(*) AS count FROM orders WHERE date(created_at) BETWEEN ? AND ? GROUP BY status', (start, end))
     total_inventory = one(conn, 'SELECT COALESCE(SUM(remaining*cost_price),0) AS n FROM stock_batches')['n']
-    return {'start': start, 'end': end, 'sales': sold['amount'], 'order_count': sold['count'], 'refunds': refunded['amount'], 'return_count': refunded['count'], 'net_revenue': sold['amount'] - refunded['amount'], 'cost_of_goods': round(costs), 'gross_profit': round(sold['amount'] - refunded['amount'] - costs), 'missing_cost_entries': missing_cost + old_orders, 'inventory_value': round(total_inventory), 'daily': daily, 'top_products': top, 'payments': methods, 'cash_shifts': shifts, 'statuses': statuses}
+    from .errands import report_summary
+    errand_summary = report_summary(conn, start, end)
+    return {'errands': errand_summary, 'start': start, 'end': end, 'sales': sold['amount'], 'order_count': sold['count'], 'refunds': refunded['amount'], 'return_count': refunded['count'], 'net_revenue': sold['amount'] - refunded['amount'], 'cost_of_goods': round(costs), 'gross_profit': round(sold['amount'] - refunded['amount'] - costs), 'missing_cost_entries': missing_cost + old_orders, 'inventory_value': round(total_inventory), 'daily': daily, 'top_products': top, 'payments': methods, 'cash_shifts': shifts, 'statuses': statuses}
 
 
 def backup_directory():
@@ -104,5 +106,7 @@ def restore_backup(user, name, confirmation):
             source.close()
         with transaction() as conn:
             conn.execute('DELETE FROM sessions')
+            conn.execute('DELETE FROM password_resets')
+            conn.execute('DELETE FROM password_reset_otps')
             audit(conn, None, 'RESTORE', name, {'requested_by': user['username'], 'safety_backup': safety})
     return {'success': True, 'safety_backup': safety, 'login_required': True}

@@ -12,6 +12,8 @@ import uvicorn
 from config import BASE_DIR, HOST, PORT, RELOAD
 from retail import auth, api, sales
 from retail.invoice_api import router as invoice_router
+from retail.password_recovery import router as recovery_router
+from retail.errand_api import public as errand_public, admin as errand_admin, media as errand_media
 from retail.shop_auth import customer_user
 from retail.shop_api import public as shop_public, admin as shop_admin, media as shop_media
 from retail.shop_auth import router as shop_auth_router
@@ -34,6 +36,10 @@ app.add_middleware(RequestBodyLimit, max_bytes=config.MAX_REQUEST_BYTES,
                                 '/api/v1/shop/upload':4*1024*1024+65536})
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=config.ALLOWED_HOSTS)
 app.include_router(auth.router)
+app.include_router(recovery_router)
+app.include_router(errand_public)
+app.include_router(errand_admin)
+app.include_router(errand_media)
 app.include_router(api.router)
 app.include_router(invoice_router)
 app.include_router(shop_auth_router)
@@ -45,6 +51,11 @@ _media_directory=BASE_DIR/'.local'/'shop-media'
 _media_directory.mkdir(parents=True,exist_ok=True)
 app.mount('/shop-media',StaticFiles(directory=_media_directory),name='shop-media')
 templates = Jinja2Templates(directory=BASE_DIR / 'templates')
+
+
+@app.get('/shop/errands',response_class=HTMLResponse,include_in_schema=False)
+def errand_shop_page(request:Request):
+    return templates.TemplateResponse(request=request,name='errands.html',context={})
 
 
 @app.get('/shop',response_class=HTMLResponse,include_in_schema=False)
@@ -113,6 +124,12 @@ def login_page(request: Request, role: str | None = None):
     })
 
 
+@app.get('/forgot-password', response_class=HTMLResponse, include_in_schema=False)
+@app.get('/reset-password', response_class=HTMLResponse, include_in_schema=False)
+def password_recovery_page(request: Request):
+    return templates.TemplateResponse(request=request, name='password_recovery.html', context={})
+
+
 @app.get('/register', response_class=HTMLResponse, include_in_schema=False)
 @app.get('/register/{role}', response_class=HTMLResponse, include_in_schema=False)
 def register_page(request: Request, role: str | None = None):
@@ -165,6 +182,7 @@ def staff_online_invoice(request:Request,ident:int):
 PAGES = {'/': 'dashboard', '/index': 'dashboard', '/index.php': 'dashboard', '/pos': 'pos', '/orders': 'orders', '/orders.php': 'orders', '/warehouse': 'inventory', '/warehouse.php': 'inventory', '/store_map': 'map', '/store-map': 'map', '/store_map.php': 'map', '/hr': 'hr', '/hr.php': 'hr', '/products': 'products', '/customers': 'customers', '/suppliers': 'suppliers', '/cash': 'cash', '/reports': 'reports', '/suggestions': 'suggestions', '/settings': 'settings'}
 PAGES.update({'/owner': 'owner_portal', '/cashier': 'cashier_portal', '/inventory': 'inventory_portal', '/shipper': 'shipper_portal'})
 PAGES['/online']='online'
+PAGES['/errands']='errands'
 
 def page(request: Request):
     if auth.setup_status()['required']:

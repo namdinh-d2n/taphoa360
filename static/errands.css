@@ -1,0 +1,362 @@
+.errand-shop {
+  margin: 0;
+  background: #f5f7f2;
+  color: #183c30;
+}
+.errand-header {
+  max-width: 1200px;
+  margin: auto;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.errand-header nav,
+.errand-promises {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.errand-brand {
+  font-size: 30px;
+  font-weight: 850;
+  color: #185d48;
+  text-decoration: none;
+}
+.errand-brand span {
+  font-size: 14px;
+  font-weight: 500;
+  margin-left: 12px;
+}
+.errand-main {
+  max-width: 1152px;
+  margin: auto;
+  padding: 0 24px 64px;
+}
+.errand-hero {
+  padding: 38px;
+  background: #e3ecdf;
+  border: 1px solid #d5e1cf;
+  border-radius: 24px;
+  margin: 12px 0 26px;
+}
+.errand-hero h1 {
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1.15;
+  margin: 14px 0;
+}
+.errand-hero p {
+  max-width: 690px;
+  line-height: 1.7;
+}
+.errand-promises {
+  margin-top: 24px;
+  font-size: 13px;
+  font-weight: 650;
+}
+.errand-layout {
+  display: grid;
+  grid-template-columns: 290px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+.errand-list {
+  display: grid;
+  gap: 10px;
+}
+.errand-order-card {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+  padding: 18px;
+  border: 1px solid #dbe4d8;
+  background: white;
+  border-radius: 14px;
+  color: inherit;
+}
+.errand-order-card.active {
+  outline: 2px solid #226b51;
+}
+.errand-order-card small {
+  font-size: 12px;
+  font-weight: 400;
+}
+.errand-detail {
+  min-width: 0;
+}
+.errand-detail .panel {
+  margin-bottom: 18px;
+  padding: 20px;
+}
+.errand-item {
+  padding: 18px 0;
+  border-top: 1px solid #e4e9e1;
+  display: grid;
+  gap: 8px;
+}
+.errand-item h4 {
+  margin: 0;
+  font-size: 17px;
+}
+.errand-item p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.errand-evidence {
+  width: 120px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+.errand-proposal {
+  border: 1px solid #e5ca83;
+  padding: 16px;
+  border-radius: 12px;
+  background: #fff8e9;
+}
+.errand-totals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+.errand-total {
+  background: #f2f6ef;
+  padding: 14px;
+  border-radius: 10px;
+  display: grid;
+  gap: 6px;
+}
+.errand-total strong {
+  font-size: 20px;
+}
+.errand-timeline {
+  padding-left: 20px;
+  border-left: 2px solid #ccdece;
+  display: grid;
+  gap: 16px;
+}
+.errand-timeline p {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
+.errand-line-form {
+  padding: 16px;
+  border: 1px solid #dce5d8;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+.errand-line-form .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.errand-detail .toolbar {
+  flex-wrap: wrap;
+}
+.errand-status {
+  color: #165e47;
+  font-size: 12px;
+  font-weight: 700;
+}
+.errand-alert {
+  background: #fff2d7;
+  border-left: 3px solid #bc8a2f;
+  padding: 12px;
+  border-radius: 6px;
+  margin: 12px 0;
+}
+.errand-empty {
+  padding: 40px 24px;
+  border: 1px dashed #b5c9b4;
+  border-radius: 18px;
+  text-align: center;
+  background: #fff;
+}
+.errand-ledger {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  list-style: none;
+}
+.errand-ledger li {
+  padding: 12px;
+  background: #f5f7f2;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 800px) {
+  .errand-layout {
+    grid-template-columns: 1fr;
+  }
+  .errand-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 480px) {
+  .errand-header {
+    padding: 16px;
+    align-items: flex-start;
+  }
+  .errand-brand span {
+    display: none;
+  }
+  .errand-main {
+    padding: 0 16px 40px;
+  }
+  .errand-hero {
+    padding: 24px;
+  }
+  .errand-list {
+    grid-template-columns: 1fr;
+  }
+  .errand-detail .panel {
+    padding: 16px;
+  }
+  .errand-promises {
+    gap: 10px;
+  }
+  .errand-totals {
+    grid-template-columns: 1fr 1fr;
+  }
+  .errand-total {
+    padding: 10px;
+  }
+  .errand-total strong {
+    font-size: 17px;
+  }
+}
+
+@media (max-width: 800px) {
+  .errand-list {
+    max-height: 310px;
+    overflow-y: auto;
+    padding: 3px;
+  }
+}
+
+.errand-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #216447;
+  font-size: 12px;
+}
+.errand-live::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  background: #318259;
+  border-radius: 50%;
+}
+.errand-payment {
+  margin: 18px 0;
+  padding: 20px;
+  border: 1px solid #c9ddcc;
+  border-radius: 14px;
+  background: #f2f7ef;
+  display: grid;
+  gap: 12px;
+}
+.errand-payment p {
+  margin: 0;
+}
+.errand-qr-large {
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+.errand-qr-large img {
+  width: 280px;
+  max-width: 100%;
+  height: auto;
+}
+.errand-qr-large strong {
+  font-size: 26px;
+}
+.errand-inline-top {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+#errand-inline .panel {
+  background: white;
+  border: 1px solid #dce6d8;
+  border-radius: 18px;
+  padding: 20px;
+}
+#errand-inline .toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+#errand-inline .hint,
+#modal .hint {
+  font-size: 12px;
+  color: #627565;
+  line-height: 1.6;
+}
+#modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+#modal .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+#modal .toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+#modal label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+#modal input,
+#modal select,
+#modal textarea {
+  width: 100%;
+  min-width: 0;
+}
+#modal .error {
+  color: #b84231;
+}
+#toast {
+  display: none;
+}
+#toast.show {
+  display: block;
+  position: fixed;
+  z-index: 300;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #173f31;
+  color: white;
+  padding: 14px 22px;
+  border-radius: 12px;
+}
+@media (max-width: 600px) {
+  #modal .form-grid {
+    grid-template-columns: 1fr;
+  }
+  #errand-inline .panel {
+    padding: 16px;
+  }
+}
