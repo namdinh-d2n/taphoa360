@@ -258,3 +258,9 @@ Không ghi vào database cửa hàng. Kiểm tra giao diện trên server thử 
 - Đơn cũ thiếu phân bổ lô/thanh toán được giữ để tra cứu; không tự động hoàn/hủy tồn của chúng.
 
 Xem [SYSTEM_OVERVIEW.md](SYSTEM_OVERVIEW.md) để biết cấu trúc và các bất biến dữ liệu.
+
+## Dữ liệu demo để duyệt
+
+Bản snapshot đã ẩn thông tin riêng và hướng dẫn tạo database demo mới nằm trong
+[DATA_REVIEW.md](DATA_REVIEW.md). Có giá, tồn và nghiệp vụ để review; không gồm
+mật khẩu, phiên đăng nhập, địa chỉ khách hay cấu hình ngân hàng thật.
