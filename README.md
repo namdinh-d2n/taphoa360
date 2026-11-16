@@ -46,6 +46,74 @@ Số lượng nhập/bán/kiểm kê mới là số nguyên (1, 2, 3…), ô nh�
 từ chối số lẻ. POS hiển thị phần nguyên của lượng tồn có thể bán. Số lẻ đã lưu trước nâng cấp
 không bị tự ý làm tròn trong database/lịch sử; dùng kiểm kê với lý do để điều chỉnh tồn thật.
 
+### Quên mật khẩu qua email OTP
+
+Mở **Quên mật khẩu?** tại `/forgot-password` hoặc từ trang đăng nhập:
+
+1. Nhập Gmail/email khôi phục đã liên kết với tài khoản cửa hàng, bấm **Gửi mã OTP**.
+2. Mở hộp thư, lấy mã OTP **6 chữ số** rồi nhập lại trên trang khôi phục.
+3. Bấm **Xác thực OTP**. Chỉ khi xác thực đúng, form đặt mật khẩu mới mới xuất hiện.
+4. Nhập mật khẩu mới từ 10–200 ký tự, nhập lại để xác nhận rồi lưu; đăng nhập lại.
+
+OTP có hiệu lực **10 phút**, chỉ xác thực thành công một lần; mỗi mã được nhập
+sai tối đa **5 lần**. Có thể gửi lại sau **60 giây**; mã cũ mất hiệu lực. Giới hạn
+5 lần gửi/email/giờ và 20 lần gửi/địa chỉ truy cập/giờ. Sau xác thực, người dùng có
+5 phút để đặt mật khẩu mới. Tải lại trang bắt đầu lại bước email.
+
+Hệ thống không cho đặt lại mật khẩu chỉ bằng email hoặc OTP chưa xác thực. Sau
+khi đổi mật khẩu, mọi phiên đăng nhập, OTP và quyền đặt lại mật khẩu của tài khoản
+đều bị thu hồi. Email không tồn tại hoặc tài khoản đã khóa nhận cùng thông báo,
+không gửi thư. Tính năng dành cho tài khoản nội bộ; tài khoản khách `/shop` dùng
+luồng riêng.
+
+Email có thể khai báo khi thiết lập/đăng ký/tạo tài khoản, tại **Cài đặt → Tài khoản
+& quyền**, hoặc **Nhân sự → Email khôi phục** (cần mật khẩu hiện tại). Mỗi email chỉ
+liên kết một tài khoản. Kiểm tra địa chỉ trước khi lưu; OTP xác minh quyền truy cập
+hộp thư tại thời điểm khôi phục.
+
+Nếu chủ tiệm cũ chưa có email và không đăng nhập được, quản trị viên có quyền vào
+máy chủ có thể liên kết email sau khi xác nhận người sở hữu:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/set_recovery_email.py --username TEN_DANG_NHAP --email EMAIL_CUA_CHU_TIEM
+```
+
+Công cụ chọn chủ tiệm đang hoạt động, sao lưu trước khi cập nhật, không đổi mật
+khẩu hay dữ liệu kinh doanh. Không có API công khai liên kết email cho người chưa
+đăng nhập.
+
+Cấu hình gửi thư trong `.env` trên máy chạy server, rồi khởi động lại:
+
+```dotenv
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURITY=starttls
+SMTP_USERNAME=dia-chi-gui@gmail.com
+SMTP_PASSWORD=
+SMTP_FROM=dia-chi-gui@gmail.com
+```
+
+Điền mật khẩu ứng dụng Gmail vào `SMTP_PASSWORD` trên máy của bạn. Có thể dùng
+máy chủ SMTP khác hoặc TLS trực tiếp với `SMTP_SECURITY=ssl` và cổng tương ứng.
+Thông tin xác thực gửi qua kết nối TLS có kiểm tra chứng chỉ. OTP nằm trong nội
+dung thư; không cần đường dẫn đặt lại mật khẩu hoặc cấu hình origin riêng cho
+thư. `PUBLIC_ORIGIN` vẫn dùng cho kiểm tra nguồn yêu cầu khi chạy sau proxy.
+
+Nếu chưa cấu hình SMTP, trang báo chưa sẵn sàng. Nếu gửi thư thất bại, server hủy
+OTP của lần gửi đó và ghi cảnh báo chung; không ghi mã, nội dung thư hoặc thông
+tin SMTP bí mật vào log. Mã OTP không được trả về API. Quyền đặt mật khẩu mới chỉ
+cấp sau xác thực OTP và được giữ trong bộ nhớ trang, không lưu trong URL/storage.
+Bộ kiểm thử dùng SMTP giả lập; cần cấu hình gửi thư để kiểm tra hộp Gmail thực.
+
+API: `POST /api/forgot-password` gửi email và trả mã yêu cầu ẩn danh;
+`POST /api/verify-reset-otp` nhận `challenge_id`, `otp`, trả `reset_token` sau khi
+xác thực; `POST /api/reset-password` nhận `token`, `password`, `confirm_password`.
+
+Nâng schema 10 → 11 tạo backup `before-v11-*.db`, thêm bảng OTP và vô hiệu hóa
+liên kết khôi phục cũ. Email chủ tiệm và dữ liệu kinh doanh được giữ nguyên. Khôi
+phục backup xóa OTP/quyền đặt lại mật khẩu; bản xuất review loại email/OTP/token,
+vẫn đọc được snapshot review schema 9 và 10.
+
 ### Đăng ký theo vai trò
 
 Mở `/register` hoặc bấm **Đăng ký** trên trang đăng nhập của vai trò:
@@ -101,6 +169,12 @@ Có thể dùng `BAT_TAPHOA360.bat --no-browser` nếu không muốn tự mở t
   không phải lịch sử kinh doanh/chấm công thật.
 - Runtime mới không dùng MySQL. Các cấu hình MySQL và module cũ còn giữ để tham khảo,
   chưa có migration cho các nghiệp vụ v3 trên MySQL.
+
+## Đi chợ hộ
+
+Khách mở Đi chợ hộ ngay trong `/shop` hoặc vào `/shop/errands`, nhân viên vào `/errands`. Trạng thái cập nhật trực tiếp, chọn tỉnh/cửa hàng demo, số lượng nguyên và chuyển khoản qua QR. Hỗ trợ tiêu chí chất lượng,
+khách duyệt thay thế và tổng cuối trước khi mua, đối soát thu/hoàn dư có chứng từ
+và phản hồi sau nhận hàng. Xem [ERRANDS.md](ERRANDS.md) để vận hành và phân quyền.
 
 ## Quy trình sử dụng
 

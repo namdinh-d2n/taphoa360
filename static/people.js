@@ -472,6 +472,20 @@ export async function renderHR(content) {
   replace(
     content,
     toolbar(
+      button("Email khôi phục", () =>
+        formModal(
+          "Email khôi phục của tôi",
+          [
+            t("email", "Email nhận mã OTP khôi phục", { type: "email", required: false }),
+            t("current_password", "Mật khẩu hiện tại", { type: "password" }),
+          ],
+          async (data) => {
+            const result = await api("/api/account-email", data);
+            state.user.email = result.email;
+          },
+          { email: state.user.email || "" },
+        ),
+      ),
       button("Đổi mật khẩu của tôi", () =>
         formModal(
           "Đổi mật khẩu",
@@ -533,6 +547,7 @@ export async function renderSettings(content) {
           ...(!user.id
             ? [t("username", "Tên đăng nhập"), t("name", "Họ tên")]
             : []),
+          t("email", "Email khôi phục", { type: "email", required: false }),
           t(
             "password",
             user.id
@@ -591,6 +606,7 @@ export async function renderSettings(content) {
           table(users, [
             { label: "Tên đăng nhập", key: "username" },
             { label: "Họ tên", key: "name" },
+            { label: "Email khôi phục", key: "email" },
             { label: "Vai trò", render: (u) => badge(u.role) },
             {
               label: "Trạng thái",
@@ -656,6 +672,7 @@ export async function renderSettings(content) {
                 ),
             },
             { label: "Điện thoại", key: "phone" },
+            { label: "Email khôi phục", key: "email" },
             { label: "Vai trò yêu cầu", render: (r) => badge(r.role) },
             { label: "Ngày đăng ký", key: "created_at" },
             {

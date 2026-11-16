@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Đi chợ hộ · Tạp hóa 360</title>
+    <link rel="stylesheet" href="/static/retail.css?v=3.1" />
+    <link rel="stylesheet" href="/static/errands.css?v=2" />
+    <script type="module" src="/static/errands-shop.js?v=2"></script>
+  </head>
+  <body class="errand-shop">
+    <header class="errand-header">
+      <a href="/shop" class="errand-brand">360 <span>Tạp hóa gần nhà</span></a>
+      <nav>
+        <a href="/shop">Mua hàng</a
+        ><a href="/shop/errands" aria-current="page">Đi chợ hộ</a>
+      </nav>
+    </header>
+    <main class="errand-main">
+      <section class="errand-hero">
+        <p class="eyebrow">BẠN LÊN DANH SÁCH · TIỆM CHỌN GIÚP BẠN</p>
+        <h1>Đi chợ hộ, rõ từng món.</h1>
+        <p>
+          Chọn theo khẩu vị của bạn. Mọi thay thế và tổng tiền đều được bạn
+          duyệt trước khi mua.
+        </p>
+        <div class="errand-promises">
+          <span>✓ Kiểm chất lượng</span><span>✓ Duyệt giá trước</span
+          ><span>✓ Hoàn dư có biên nhận</span>
+        </div>
+      </section>
+      <div id="errand-root" aria-live="polite">Đang tải…</div>
+    </main>
+    <dialog id="modal" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <h2 id="modal-title"></h2>
+        <button id="modal-close" class="icon-button" aria-label="Đóng">
+          ×
+        </button>
+      </div>
+      <div id="modal-content"></div>
+    </dialog>
+    <div id="toast" role="status"></div>
+  </body>
+</html>

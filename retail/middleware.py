@@ -12,6 +12,8 @@ class RequestBodyLimit:
             return await self.app(scope, receive, send)
         headers = dict(scope.get('headers', []))
         limit = self.path_limits.get(scope.get('path'), self.max_bytes)
+        if scope.get('path', '').startswith('/api/errands/') and scope.get('path', '').endswith('/photos'):
+            limit = 4 * 1024 * 1024 + 65536
         try:
             length = int(headers.get(b'content-length', b'0'))
         except ValueError:

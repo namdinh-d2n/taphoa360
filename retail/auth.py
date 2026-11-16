@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from .database import reading, transaction, one, rows
 from .common import fail, required, audit, record, now, validate_payload
 from .access import home_for
+from .password_recovery import normalize_email, ensure_email_available, invalidate_resets
 
 router = APIRouter(dependencies=[Depends(validate_payload)])
 ROLES = {'owner', 'cashier', 'inventory', 'shipper'}
@@ -44,7 +45,7 @@ def current_user(request: Request):
     bearer = request.headers.get('authorization', '')
     token = bearer[7:] if bearer.startswith('Bearer ') else request.cookies.get('taphoa_session', '')
     with reading() as conn:
-        user = one(conn, '''SELECT u.id,u.username,u.name,u.role,u.employee_id,s.csrf FROM sessions s
+        user = one(conn, '''SELECT u.id,u.username,u.name,u.role,u.employee_id,u.email,s.csrf FROM sessions s
             JOIN users u ON s.user_id=u.id WHERE s.token_hash=? AND s.expires_at>? AND u.active=1''', (hashlib.sha256(token.encode()).hexdigest(), time.time()))
     if not user:
         fail('Vui lòng đăng nhập', 401)
@@ -82,10 +83,11 @@ def setup(data: dict, request: Request):
     if config.SETUP_TOKEN and not hmac.compare_digest(str(data.get('setup_token', '')).encode(), config.SETUP_TOKEN.encode()):
         fail('Mã thiết lập cửa hàng không đúng', 403)
     username, name, hashed = validate_account(data)
+    email = normalize_email(data.get('email'))
     with transaction() as conn:
         if one(conn, 'SELECT id FROM users LIMIT 1'):
             fail('Hệ thống đã có tài khoản chủ tiệm', 409)
-        ident = conn.execute("INSERT INTO users(username,name,password_hash,role) VALUES (?,?,?,'owner')", (username, name, hashed)).lastrowid
+        ident = conn.execute("INSERT INTO users(username,name,password_hash,role,email) VALUES (?,?,?,'owner',?)", (username, name, hashed, email)).lastrowid
         audit(conn, {'id': ident}, 'SETUP', 'users', {'username': username})
     return {'success': True}
 
@@ -98,6 +100,7 @@ def register(data: dict, request: Request):
         fail('Vui lòng chọn vai trò hợp lệ')
     if not isinstance(data.get('password'), str) or data.get('password') != data.get('confirm_password'):
         fail('Mật khẩu xác nhận không khớp')
+    email = normalize_email(data.get('email'))
     phone = str(data.get('phone') or '').strip()
     if len(phone) > 30 or (phone and not re.fullmatch(r'[+0-9 ()\-]{7,30}', phone)):
         fail('Số điện thoại không hợp lệ')
@@ -116,7 +119,7 @@ def register(data: dict, request: Request):
             fail('Cửa hàng chưa được thiết lập. Hãy tạo tài khoản chủ tiệm đầu tiên tại trang thiết lập.', 409)
         if one(conn, 'SELECT id FROM users WHERE username=?', (username,)) or one(conn, "SELECT id FROM registrations WHERE username=? AND status='PENDING'", (username,)):
             fail('Tên đăng nhập đã được sử dụng hoặc đang chờ duyệt', 409)
-        ident = conn.execute('INSERT INTO registrations(username,name,phone,password_hash,role) VALUES (?,?,?,?,?)', (username, name, phone, hashed, role)).lastrowid
+        ident = conn.execute('INSERT INTO registrations(username,name,phone,password_hash,role,email) VALUES (?,?,?,?,?,?)', (username, name, phone, hashed, role, email)).lastrowid
         audit(conn, None, 'REGISTER_REQUEST', ident, {'username': username, 'role': role})
     return {'success': True, 'registration_id': ident, 'status': 'PENDING', 'role': role,
             'message': 'Đã gửi đăng ký. Bạn có thể đăng nhập sau khi chủ tiệm duyệt tài khoản.'}
@@ -125,7 +128,7 @@ def register(data: dict, request: Request):
 @router.get('/api/v1/registrations')
 def registrations(user=Depends(require())):
     with reading() as conn:
-        return rows(conn, '''SELECT r.id,r.username,r.name,r.phone,r.role,r.status,r.created_at,
+        return rows(conn, '''SELECT r.id,r.username,r.name,r.phone,r.email,r.role,r.status,r.created_at,
             r.reviewed_at,r.review_note,r.user_id,u.name AS reviewer FROM registrations r
             LEFT JOIN users u ON r.reviewed_by=u.id ORDER BY r.status='PENDING' DESC,r.id DESC LIMIT 200''')
 
@@ -144,6 +147,7 @@ def review_registration(ident: int, data: dict, user=Depends(require())):
             fail('Đăng ký này đã được xử lý', 409)
         user_id = None
         if status == 'APPROVED':
+            ensure_email_available(conn, registration['email'])
             if one(conn, 'SELECT id FROM users WHERE username=?', (registration['username'],)):
                 fail('Tên đăng nhập đã tồn tại. Hãy từ chối đăng ký này.', 409)
             employee_id = data.get('employee_id') or None
@@ -156,7 +160,7 @@ def review_registration(ident: int, data: dict, user=Depends(require())):
                 initials = ''.join(word[0].upper() for word in registration['name'].split()[:2])
                 employee_id = conn.execute('''INSERT INTO employees(name,role,phone,base_salary,hourly_rate,avatar_initials,status)
                     VALUES (?,?,?,0,0,?,'ACTIVE')''', (registration['name'], roles[registration['role']], registration['phone'], initials)).lastrowid
-            user_id = conn.execute('INSERT INTO users(username,name,password_hash,role,employee_id) VALUES (?,?,?,?,?)', (registration['username'], registration['name'], registration['password_hash'], registration['role'], employee_id)).lastrowid
+            user_id = conn.execute('INSERT INTO users(username,name,password_hash,role,employee_id,email) VALUES (?,?,?,?,?,?)', (registration['username'], registration['name'], registration['password_hash'], registration['role'], employee_id, registration['email'])).lastrowid
         conn.execute("UPDATE registrations SET status=?,reviewed_by=?,reviewed_at=?,review_note=?,user_id=?,password_hash='' WHERE id=?", (status, user['id'], now(), note, user_id, ident))
         audit(conn, user, 'REVIEW_REGISTRATION', ident, {'status': status, 'role': registration['role'], 'user_id': user_id, 'note': note})
     return {'success': True, 'status': status, 'user_id': user_id}
@@ -216,8 +220,23 @@ def change_password(data: dict, user=Depends(current_user)):
         hashed = password_hash(data.get('password'))
         conn.execute('UPDATE users SET password_hash=? WHERE id=?', (hashed, user['id']))
         conn.execute('DELETE FROM sessions WHERE user_id=?', (user['id'],))
+        invalidate_resets(conn, user['id'])
         audit(conn, user, 'CHANGE_PASSWORD', user['id'], {})
     return {'success': True}
+
+
+@router.post('/api/account-email')
+def change_recovery_email(data: dict, user=Depends(current_user)):
+    email = normalize_email(data.get('email'))
+    with transaction() as conn:
+        account = record(conn, 'users', user['id'])
+        if not verify(data.get('current_password', ''), account['password_hash']):
+            fail('Mật khẩu hiện tại không đúng', 403)
+        ensure_email_available(conn, email, user['id'])
+        conn.execute('UPDATE users SET email=? WHERE id=?', (email, user['id']))
+        invalidate_resets(conn, user['id'])
+        audit(conn, user, 'CHANGE_RECOVERY_EMAIL', user['id'], {})
+    return {'success': True, 'email': email}
 
 
 @router.post('/api/logout')
@@ -231,24 +250,26 @@ def logout(request: Request, response: Response, user=Depends(current_user)):
 @router.get('/api/v1/users')
 def users(user=Depends(require())):
     with reading() as conn:
-        return rows(conn, 'SELECT id,username,name,role,employee_id,active FROM users ORDER BY id')
+        return rows(conn, 'SELECT id,username,name,role,employee_id,email,active FROM users ORDER BY id')
 
 
 @router.post('/api/v1/users')
 def create_user(data: dict, user=Depends(require())):
     username, name, hashed = validate_account(data)
+    email = normalize_email(data.get('email'))
     role = data.get('role', 'cashier')
     if role not in ROLES:
         fail('Vai trò không hợp lệ')
     with transaction() as conn:
         if one(conn, 'SELECT id FROM users WHERE username=?', (username,)) or one(conn, "SELECT id FROM registrations WHERE username=? AND status='PENDING'", (username,)):
             fail('Tên đăng nhập đã tồn tại hoặc đang chờ duyệt đăng ký', 409)
+        ensure_email_available(conn, email)
         employee = data.get('employee_id') or None
         if employee:
             profile = record(conn, 'employees', employee)
             if profile['status'] != 'ACTIVE' or one(conn, 'SELECT id FROM users WHERE employee_id=?', (employee,)):
                 fail('Hồ sơ nhân viên đã ngừng hoạt động hoặc đã liên kết tài khoản khác', 409)
-        ident = conn.execute('INSERT INTO users(username,name,password_hash,role,employee_id) VALUES (?,?,?,?,?)', (username, name, hashed, role, employee)).lastrowid
+        ident = conn.execute('INSERT INTO users(username,name,password_hash,role,employee_id,email) VALUES (?,?,?,?,?,?)', (username, name, hashed, role, employee, email)).lastrowid
         audit(conn, user, 'CREATE_USER', ident, {'username': username, 'role': role})
     return {'id': ident, 'success': True}
 
@@ -257,6 +278,8 @@ def create_user(data: dict, user=Depends(require())):
 def update_user(ident: int, data: dict, user=Depends(require())):
     with transaction() as conn:
         account = record(conn, 'users', ident)
+        email = normalize_email(data.get('email', account['email']))
+        ensure_email_available(conn, email, ident)
         role = data.get('role', account['role'])
         active = 1 if data.get('active', account['active']) else 0
         if role not in ROLES:
@@ -270,7 +293,8 @@ def update_user(ident: int, data: dict, user=Depends(require())):
             if profile['status'] != 'ACTIVE' or one(conn, 'SELECT id FROM users WHERE employee_id=? AND id!=?', (employee, ident)):
                 fail('Hồ sơ nhân viên đã ngừng hoạt động hoặc đã liên kết tài khoản khác', 409)
         hashed = password_hash(data['password']) if data.get('password') else account['password_hash']
-        conn.execute('UPDATE users SET role=?,active=?,employee_id=?,password_hash=? WHERE id=?', (role, active, employee, hashed, ident))
+        conn.execute('UPDATE users SET role=?,active=?,employee_id=?,password_hash=?,email=? WHERE id=?', (role, active, employee, hashed, email, ident))
         conn.execute('DELETE FROM sessions WHERE user_id=?', (ident,))
+        invalidate_resets(conn, ident)
         audit(conn, user, 'UPDATE_USER', ident, {'role': role, 'active': active})
     return {'success': True}

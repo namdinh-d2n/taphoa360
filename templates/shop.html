@@ -6,8 +6,9 @@
     <meta name="theme-color" content="#15543d" />
     <title>Tạp hóa 360 · Tiệm gần nhà</title>
     <link rel="icon" href="/static/favicon.svg" />
-    <link rel="stylesheet" href="/static/shop.css?v=4.0" />
-    <script src="/static/shop.js?v=4.0" type="module"></script>
+    <link rel="stylesheet" href="/static/shop.css?v=4.1" />
+    <link rel="stylesheet" href="/static/errands.css?v=2" />
+    <script src="/static/shop.js?v=4.1" type="module"></script>
   </head>
   <body data-track="{{ tracking_token }}">
     <a class="skip" href="#shop-main">Đến nội dung</a>
@@ -27,6 +28,9 @@
           autocomplete="off"
       /></label>
       <nav>
+        <a class="errand-nav-link" id="errand-entry" href="/shop/errands"
+          >Đi chợ hộ <span id="errand-notifications"></span
+        ></a>
         <button id="account">Đăng nhập</button
         ><button id="my-orders">Đơn của tôi</button
         ><button id="cart-button" class="primary">
@@ -44,7 +48,39 @@
       ><span id="delivery-note">Chọn khu vực để xem phí giao.</span>
     </div>
     <main id="shop-main">
+      <section id="errand-inline" hidden>
+        <div class="errand-inline-top">
+          <button id="errand-back" type="button">← Về mua hàng</button
+          ><span class="errand-live">Đi chợ hộ</span>
+        </div>
+        <div id="errand-root"></div>
+      </section>
       <section id="browse">
+        <section
+          class="errand-service-card"
+          aria-labelledby="errand-service-title"
+        >
+          <div>
+            <p class="eyebrow">DỊCH VỤ ĐI CHỢ HỘ</p>
+            <h2 id="errand-service-title">
+              Bận hôm nay? Tiệm đi chợ giúp bạn.
+            </h2>
+            <p>
+              Gửi danh sách, chọn tỉnh/thành và cửa hàng. Bạn duyệt hàng, giá và
+              phí trước khi mua.
+            </p>
+            <div class="errand-service-steps">
+              <span>01 · Lên danh sách</span><span>02 · Duyệt hàng & giá</span
+              ><span>03 · Giao tận tay</span>
+            </div>
+          </div>
+          <a
+            href="/shop/errands"
+            id="errand-service-open"
+            class="errand-service-action"
+            >Bắt đầu đi chợ hộ <span aria-hidden="true">→</span></a
+          >
+        </section>
         <div id="banners" class="banners"></div>
         <div class="category-browser">
           <label
@@ -131,6 +167,14 @@
       </div>
       <div id="dialog-content"></div>
     </dialog>
+    <dialog id="modal" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <h2 id="modal-title"></h2>
+        <button id="modal-close" type="button" aria-label="Đóng">×</button>
+      </div>
+      <div id="modal-content"></div>
+    </dialog>
+    <div id="toast" role="status"></div>
     <div id="shop-toast" role="status" hidden></div>
   </body>
 </html>

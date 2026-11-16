@@ -1121,6 +1121,7 @@ export async function renderReports(content) {
             `Có ${r.missing_cost_entries} dòng bán/đơn cũ thiếu giá vốn. Lợi nhuận gộp chưa phản ánh đầy đủ các dòng này.`,
           )
         : null,
+      panel("Đi chợ hộ",el("p",{},`${r.errands.delivered_count} đơn đã giao · giá trị sau điều chỉnh ${money(r.errands.delivered_value)}`),el("p",{},`Trong kỳ: thu ${money(r.errands.received)} · hoàn ${money(r.errands.refunded)} · chi mua ngoài ${money(r.errands.expenses)}`),el("p",{class:"hint"},`Các đơn chưa quyết toán hiện tại: còn thu ${money(r.errands.collect_due)} · còn hoàn ${money(r.errands.refund_due)}`)),
       panel(
         "Doanh số theo ngày",
         r.daily.length
