@@ -1,3 +1,36 @@
+# Địa chỉ giao hàng theo tài khoản — 17/11/2026
+
+- Toàn bộ kiểm thử cuối: **199 ca, 198 đạt**, 1 ca OCR thực tùy chọn bỏ qua.
+- 10 ca mới: lưu qua đăng xuất/đăng nhập lại/phiên trình duyệt mới, tách tài khoản,
+  chuẩn hóa địa chỉ tỉnh/phường, chặn sửa khi thiếu phiên/CSRF hoặc sai origin,
+  khu ngừng phục vụ không xóa địa chỉ, đơn thành công nhớ nơi nhận, gửi lại đơn
+  cũ không ghi đè địa chỉ vừa sửa, lỗi đặt đơn không lưu, dùng lại cho đi chợ hộ,
+  đổi tỉnh bỏ cửa hàng không tương thích và snapshot review loại dữ liệu riêng.
+- Chrome headless với server/database QA riêng: tự nhắc địa chỉ lần đầu, lưu và
+  hiện trên Giao tới, reload không nhắc lại, form sửa tự điền, checkout dùng địa
+  chỉ lưu, đi chợ hộ tự điền tỉnh/địa chỉ, tài khoản khác không thấy dữ liệu cũ,
+  đăng nhập lại khôi phục đúng địa chỉ; không lỗi JS/tràn ngang ở mobile 390px.
+- Schema 14 tạo bảng riêng theo shop_accounts.id, có backup trước nâng cấp,
+  không đổi địa chỉ trong đơn đã tạo và không tự lấy dữ liệu từ lịch sử đơn cũ.
+  Form gửi expected_account_id để chặn lưu nhầm khi đổi phiên lúc đang nhập.
+- Ruff F/E9, compileall, node --check và git diff --check đạt. Server chính đã
+  chạy schema 14; QA tách biệt, không cập nhật địa chỉ khách thật khi kiểm thử.
+
+# Lối vào khách hàng và nội bộ — 17/11/2026
+
+- `/` mở `/shop` cho khách/không có phiên nội bộ. Phiên chủ tiệm, thu ngân, kiểm
+  kho, giao hàng hợp lệ chuyển về đúng khu làm việc. `/admin` là lối nội bộ:
+  chưa đăng nhập → `/login`, đã đăng nhập → khu vai trò; chưa thiết lập → `/setup`.
+- Tài khoản mua hàng không được dùng vào nội bộ. Nếu có cả phiên khách và nhân
+  viên trong cùng trình duyệt, `/` ưu tiên phiên nhân viên; `/shop` vẫn mở trực tiếp.
+- Đã cập nhật liên kết Chủ tiệm & nhân viên ở shop, nút về mua hàng ở trang đăng
+  nhập và launcher trên máy tiệm mở `/admin`.
+- 65 kiểm thử đạt: 6 ca điều hướng mới, 53 ca retail/phân quyền hiện có và 6 ca
+  production. Có trường hợp phiên hết hạn, tài khoản khóa, đăng xuất, khách đăng
+  nhập, cả bốn vai trò và lần đầu thiết lập. Database kiểm thử riêng.
+- Compileall, Ruff F/E9 cho kiểm thử mới và git diff --check đạt. Máy chủ local
+  đã khởi động lại; HTTP kiểm tra `/` → `/shop`, `/admin` → `/login`, health 200.
+
 # Đi chợ hộ: cập nhật trực tiếp, cửa hàng demo và QR — 16/11/2026
 
 - Bộ kiểm thử cuối: **183 ca, 182 đạt**, 1 ca OCR thực tùy chọn bỏ qua.

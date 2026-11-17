@@ -8,7 +8,7 @@ import threading
 import config
 
 LOCK = threading.RLock()
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 14
 
 
 def connect():
@@ -214,6 +214,8 @@ def migrate():
     from .errand_schema import migrate_errands, migrate_errand_locations
     migrate_errands()
     migrate_errand_locations()
+    from .shop_addresses import migrate_addresses
+    migrate_addresses()
 SCHEMA = '''
 CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY, applied_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE COLLATE NOCASE, name TEXT NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('owner','cashier','inventory','shipper')), employee_id INTEGER REFERENCES employees(id), active INTEGER DEFAULT 1, created_at TEXT DEFAULT CURRENT_TIMESTAMP);

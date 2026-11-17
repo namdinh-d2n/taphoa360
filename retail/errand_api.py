@@ -55,8 +55,11 @@ def live_revision(conn, user, customer):
         where, params = " WHERE " + field + "=?", (user["id"],)
     else:
         where, params = "", ()
+    from .shop_addresses import saved_address
+
     return domain.digest(
         {
+            "saved_address": saved_address(conn, user["id"]) if customer else None,
             "orders": rows(
                 conn,
                 "SELECT id,version FROM errand_orders" + where + " ORDER BY id",
@@ -188,7 +191,16 @@ def customer_orders(user=Depends(customer_user)):
 @public.post("")
 def create_order(data: dict, request: Request, user=Depends(customer_user)):
     with transaction() as conn:
-        return domain.create(conn, user, data, request.headers.get("idempotency-key"))
+        request_key = request.headers.get("idempotency-key")
+        previous = one(
+            conn, "SELECT id FROM errand_orders WHERE request_key=?", (request_key,)
+        )
+        result = domain.create(conn, user, data, request_key)
+        if not previous:
+            from .shop_addresses import remember_order_address
+
+            remember_order_address(conn, user, data, errand=True)
+        return result
 
 
 @public.get("/{ident}")

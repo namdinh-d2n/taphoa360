@@ -10,7 +10,6 @@ import config
 from .auth import password_hash, verify, same_origin
 from .common import fail, required, validate_payload
 from .database import reading, transaction, one, rows
-from .inventory import local_now
 
 router = APIRouter(prefix="/api/shop", dependencies=[Depends(validate_payload)])
 
@@ -129,13 +128,34 @@ def login(data: dict, request: Request, response: Response):
 
 @router.get("/me")
 def me(user=Depends(customer_user)):
+    from .shop_addresses import saved_address
+
     with reading() as conn:
         ledger = rows(
             conn,
             "SELECT amount,reason,created_at FROM shop_points_ledger WHERE account_id=? ORDER BY id DESC LIMIT 50",
             (user["id"],),
         )
-    return {**user, "ledger": ledger}
+        address = saved_address(conn, user["id"])
+    return {**user, "ledger": ledger, "saved_address": address}
+
+
+@router.get("/address")
+def get_delivery_address(user=Depends(customer_user)):
+    from .shop_addresses import saved_address
+
+    with reading() as conn:
+        return {"saved_address": saved_address(conn, user["id"])}
+
+
+@router.put("/address")
+def update_delivery_address(data: dict, user=Depends(customer_user)):
+    from .shop_addresses import save_address
+
+    if "expected_account_id" in data and data["expected_account_id"] != user["id"]:
+        fail("Tài khoản đã thay đổi. Hãy mở lại biểu mẫu địa chỉ.", 409)
+    with transaction() as conn:
+        return {"saved_address": save_address(conn, user, data)}
 
 
 @router.post("/logout")

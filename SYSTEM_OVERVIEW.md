@@ -81,6 +81,21 @@ Xem ERRANDS.md về trạng thái, phân quyền, kiểm hàng và quyết toán
 chỉ tiêu đi chợ hộ; ảnh nằm ngoài SQLite và phải sao lưu cùng dữ liệu. Tất cả
 bảng đi chợ hộ được loại khỏi snapshot review để ẩn nội dung riêng của khách.
 
+## Địa chỉ khách hàng mặc định (schema 14)
+
+`retail/shop_addresses.py` quản lý một nơi nhận cho mỗi `shop_accounts.id` trong
+`customer_delivery_addresses`. Lưu địa chỉ chuẩn hóa từ danh mục tỉnh/phường hoặc
+nhập tay, tên/điện thoại nhận, khu giao và cửa hàng đi chợ hộ. `/api/shop/me` trả
+`saved_address`; `/api/shop/address` GET/PUT yêu cầu phiên khách và CSRF/origin.
+Không nhận account_id từ request làm chủ sở hữu; form gửi expected_account_id để
+chặn lưu nhầm nếu phiên đổi tài khoản trong lúc đang nhập.
+
+Tạo đơn thành công cập nhật nơi nhận trong cùng transaction, bỏ qua idempotent
+replay; đơn cũ giữ địa chỉ snapshot. Thay đổi địa chỉ phát cập nhật theo revision
+SSE của chính tài khoản; frontend bỏ dữ liệu trong bộ nhớ khi đổi/thoát tài khoản.
+Snapshot review loại bảng địa chỉ mặc định; schema 14 backup trước nâng cấp và
+không suy ra dữ liệu địa chỉ từ đơn lịch sử.
+
 ## Dữ liệu và bất biến
 
 Schema 9 bổ sung luồng QR trả trước (`PREPAY`): giữ hàng khi tạo đơn, QR/số tiền/tài

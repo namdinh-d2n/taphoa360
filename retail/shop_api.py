@@ -77,7 +77,11 @@ def quote(data: dict, user=Depends(customer_user)):
 def place(data: dict, request: Request, user=Depends(customer_user)):
     with transaction() as conn:
         shop.expire_pending(conn)
-        return shop.place(conn, user, data, request.headers.get("idempotency-key"))
+        result=shop.place(conn, user, data, request.headers.get("idempotency-key"))
+        if not result.get('replayed'):
+            from .shop_addresses import remember_order_address
+            remember_order_address(conn,user,data)
+        return result
 
 
 @public.get("/orders")
