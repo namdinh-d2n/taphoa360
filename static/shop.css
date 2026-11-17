@@ -1461,3 +1461,9 @@ button.detail-text-button {
 [hidden] {display:none!important;}
 @media(max-width:900px){.shop-header{flex-wrap:wrap;} .shop-header nav {flex-wrap:wrap;} .errand-service-card{flex-direction:column;align-items:flex-start;}}
 @media(max-width:600px){.shop-header nav {width:100%;margin-left:0;justify-content:space-between;gap:4px;} .errand-nav-link{font-size:11px;padding:9px 8px;} .errand-service-card{padding:22px;} .errand-service-action{width:100%;} }
+
+.delivery { flex-wrap:wrap; }
+.saved-delivery-summary {flex-basis:100%;margin:0;line-height:1.6;color:var(--green);font-weight:550;overflow-wrap:anywhere;}
+.checkout-saved-address {border:1px solid var(--line);border-radius:12px;padding:14px;}
+.checkout-saved-address summary {cursor:pointer;color:var(--green);font-weight:650;}
+.checkout-saved-address .address-picker {margin-top:14px;}

@@ -101,3 +101,11 @@ thông báo sau commit; `/api/shop/errands/events` và `/api/v1/errands/events` 
 trả revision của dữ liệu trong quyền người dùng. Không phát sự kiện sau rollback.
 Dịch vụ vẫn dùng một worker theo kiến trúc hiện tại; khi triển khai nhiều worker
 cần bổ sung broker chung thay cho bộ phát sự kiện trong tiến trình.
+
+## Dùng lại địa chỉ đã lưu
+
+Tạo yêu cầu mới tự lấy người nhận/điện thoại, địa chỉ và tỉnh/cửa hàng phục vụ từ
+thông tin đã lưu của tài khoản. Mở mục Giao tới trên `/shop` để đặt/sửa mặc định;
+đơn đi chợ hộ thành công cũng nhớ nơi nhận và điểm phục vụ cho lần sau. Nếu đổi
+tỉnh, cửa hàng đã lưu khác tỉnh bị bỏ chọn để khách chọn đúng điểm mới. Địa chỉ
+trong yêu cầu đã tạo không thay đổi khi cập nhật mặc định.

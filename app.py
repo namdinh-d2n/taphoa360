@@ -53,6 +53,24 @@ app.mount('/shop-media',StaticFiles(directory=_media_directory),name='shop-media
 templates = Jinja2Templates(directory=BASE_DIR / 'templates')
 
 
+@app.get('/', include_in_schema=False)
+@app.get('/admin', include_in_schema=False)
+def entry_page(request: Request):
+    """Open the public shop or the signed-in staff member's workspace."""
+    internal = request.url.path == '/admin'
+    if internal and auth.setup_status()['required']:
+        return RedirectResponse('/setup', 303)
+    try:
+        user = auth.current_user(request)
+    except HTTPException as error:
+        if error.status_code != 401:
+            raise
+        destination = '/login' if internal else '/shop'
+    else:
+        destination = home_for(user['role'])
+    return RedirectResponse(destination, 303)
+
+
 @app.get('/shop/errands',response_class=HTMLResponse,include_in_schema=False)
 def errand_shop_page(request:Request):
     return templates.TemplateResponse(request=request,name='errands.html',context={})
@@ -179,7 +197,7 @@ def staff_online_invoice(request:Request,ident:int):
         if user['role']=='shipper' and order['shipper_id']!=user['id']:fail('Đơn chưa được phân công cho bạn.',403)
     return templates.TemplateResponse(request=request,name='online_invoice.html',context=context)
 
-PAGES = {'/': 'dashboard', '/index': 'dashboard', '/index.php': 'dashboard', '/pos': 'pos', '/orders': 'orders', '/orders.php': 'orders', '/warehouse': 'inventory', '/warehouse.php': 'inventory', '/store_map': 'map', '/store-map': 'map', '/store_map.php': 'map', '/hr': 'hr', '/hr.php': 'hr', '/products': 'products', '/customers': 'customers', '/suppliers': 'suppliers', '/cash': 'cash', '/reports': 'reports', '/suggestions': 'suggestions', '/settings': 'settings'}
+PAGES = {'/index': 'dashboard', '/index.php': 'dashboard', '/pos': 'pos', '/orders': 'orders', '/orders.php': 'orders', '/warehouse': 'inventory', '/warehouse.php': 'inventory', '/store_map': 'map', '/store-map': 'map', '/store_map.php': 'map', '/hr': 'hr', '/hr.php': 'hr', '/products': 'products', '/customers': 'customers', '/suppliers': 'suppliers', '/cash': 'cash', '/reports': 'reports', '/suggestions': 'suggestions', '/settings': 'settings'}
 PAGES.update({'/owner': 'owner_portal', '/cashier': 'cashier_portal', '/inventory': 'inventory_portal', '/shipper': 'shipper_portal'})
 PAGES['/online']='online'
 PAGES['/errands']='errands'

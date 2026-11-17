@@ -22,9 +22,23 @@ if (!(Test-Path .env)) { Copy-Item .env.example .env }
 .\.venv\Scripts\python.exe app.py
 ```
 
-Mở **http://127.0.0.1:8000**. Lần đầu, tạo tên đăng nhập và mật khẩu chủ tiệm
+Mở **http://127.0.0.1:8000/admin**. Lần đầu, tạo tên đăng nhập và mật khẩu chủ tiệm
 (từ 10 ký tự). Không có mật khẩu quản trị mặc định. Sau đó đăng nhập và thêm tài khoản
 cho từng nhân viên tại **Cài đặt → Tài khoản & quyền**.
+
+### Lối vào khách hàng và nội bộ
+
+- Địa chỉ chính `/`: khách hoặc người chưa đăng nhập nội bộ được đưa tới `/shop`,
+  có mua hàng và Đi chợ hộ. Nếu còn phiên đăng nhập nhân viên hợp lệ, tự vào khu
+  làm việc đúng vai trò: chủ tiệm `/owner`, thu ngân `/cashier`, kiểm kho
+  `/inventory`, giao hàng `/shipper`.
+- `/admin`: lối vào chủ tiệm/nhân viên. Chưa đăng nhập thì mở trang đăng nhập nội
+  bộ; đã đăng nhập thì vào khu làm việc. Cửa hàng mới chưa có chủ tiệm được đưa
+  tới `/setup`. Nút bật hệ thống trên máy tiệm cũng mở lối này.
+- Khách có thể vào `/shop` trực tiếp. Ở cuối trang có liên kết **Chủ tiệm & nhân
+  viên**; trang đăng nhập nội bộ có nút về trang mua hàng. Tài khoản khách mua
+  hàng không cấp quyền vào nội bộ. Nếu cùng trình duyệt có cả hai phiên, địa chỉ
+  chính ưu tiên phiên nhân viên; `/shop` vẫn mở được để xem trải nghiệm khách.
 
 ### Đăng nhập và khu làm việc theo vai trò
 
@@ -169,6 +183,23 @@ Có thể dùng `BAT_TAPHOA360.bat --no-browser` nếu không muốn tự mở t
   không phải lịch sử kinh doanh/chấm công thật.
 - Runtime mới không dùng MySQL. Các cấu hình MySQL và module cũ còn giữ để tham khảo,
   chưa có migration cho các nghiệp vụ v3 trên MySQL.
+
+## Địa chỉ nhận hàng theo tài khoản
+
+Khách đăng nhập lần đầu chưa có địa chỉ sẽ được mời lưu người nhận, số điện thoại,
+địa chỉ và khu giao. Các lần sau thông tin tự hiện tại **Giao tới** và tự điền
+checkout; chọn **Thay đổi địa chỉ** khi muốn nhận tại nơi khác. Vùng giao đã chọn
+cũng lưu theo tài khoản. Địa chỉ tồn tại sau tải lại, đăng xuất/đăng nhập lại hoặc
+đổi thiết bị; không lấy địa chỉ của tài khoản trước trên cùng trình duyệt.
+
+Đơn đi chợ hộ tự điền cùng nơi nhận và cửa hàng đã chọn lần trước. Khi đặt thành
+công một đơn với nơi nhận khác, địa chỉ mới được nhớ cho lần sau. Gửi lại cùng
+đơn không ghi đè địa chỉ vừa sửa; thay đổi nơi nhận mặc định không sửa địa chỉ các
+đơn đã tạo. Phí và vùng phục vụ vẫn được kiểm tra lại, không tự mở rộng vùng giao.
+
+Thông tin lưu ở server và chỉ tài khoản đăng nhập đó được đọc/sửa; bản xuất
+review không chứa địa chỉ này. Migration schema 14 tạo backup trước nâng cấp,
+không tự lấy địa chỉ từ lịch sử đơn của khách cũ. Khách cần nhập lần đầu một lần.
 
 ## Đi chợ hộ
 

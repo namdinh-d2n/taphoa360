@@ -87,7 +87,7 @@ def run_server(no_browser):
     connect_host = '127.0.0.1' if HOST == '0.0.0.0' else '::1' if HOST == '::' else HOST
     url_host = '[' + connect_host + ']' if ':' in connect_host else connect_host
     base_url = f'http://{url_host}:{PORT}'
-    login_url = base_url + '/login'
+    entry_url = base_url + '/admin'
     try:
         with socket.create_connection((connect_host, PORT), timeout=1):
             busy = True
@@ -97,7 +97,7 @@ def run_server(no_browser):
         for _ in range(5):
             if is_ready(base_url):
                 print('[3/3] Tap hoa 360 da chay. Khong khoi dong them server.', flush=True)
-                open_page(login_url, no_browser)
+                open_page(entry_url, no_browser)
                 return
             time.sleep(.5)
         raise RuntimeError(f'Cong {PORT} dang duoc su dung, nhung Tap hoa 360 chua san sang. Kiem tra server cu hoac doi PORT trong .env.')
@@ -108,7 +108,7 @@ def run_server(no_browser):
         while time.monotonic() < deadline and not server.should_exit:
             if server.started and is_ready(base_url):
                 print('[3/3] He thong da san sang.', flush=True)
-                open_page(login_url, no_browser)
+                open_page(entry_url, no_browser)
                 return
             time.sleep(.3)
         if not server.should_exit:

@@ -105,7 +105,12 @@ export function mountErrands(root) {
       ),
     );
   }
-  function createForm() {
+  async function createForm() {
+    const response = await fetch("/api/shop/me");
+    if (!response.ok)
+      throw Error("Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.");
+    user = await response.json();
+    const saved = user.saved_address;
     const requestKey = crypto.randomUUID();
     const lines = el("div");
     const rows = [];
@@ -181,8 +186,10 @@ export function mountErrands(root) {
       "Lên danh sách đi chợ",
       specs,
       {
-        receiver: user.name,
-        phone: user.phone,
+        receiver: saved?.receiver || user.name,
+        phone: saved?.phone || user.phone,
+        address: saved?.address || "",
+        province_code: saved?.errand_province_code || "",
         budget: 300000,
         preferences:
           "Phải hỏi trước khi thay hàng hoặc tăng tiền. Không liên lạc được thì chờ xác nhận, không tự mua.",
@@ -207,6 +214,15 @@ export function mountErrands(root) {
           requestKey,
         );
         selected = order.id;
+        const profile = await fetch("/api/shop/me");
+        if (profile.ok) {
+          user = await profile.json();
+          window.dispatchEvent(
+            new CustomEvent("saved-delivery-address", {
+              detail: { accountId: user.id, saved: user.saved_address },
+            }),
+          );
+        }
         await refresh();
       },
       extra,
@@ -240,6 +256,26 @@ export function mountErrands(root) {
         ? `${branch.address} · Phí giao ${money(branch.fee)} · Phí mua hộ ${money(data.settings.service_fee)}`
         : "Chọn cửa hàng để xem phí và điểm phục vụ demo.";
     });
+    if (saved?.errand_province_code) {
+      requestForm.elements.province_code.value = String(
+        saved.errand_province_code,
+      );
+      requestForm.elements.province_code.dispatchEvent(new Event("change"));
+      if (
+        saved.branch_available &&
+        data.branches.some((b) => b.id === saved.branch_id)
+      )
+        branchSelect.value = String(saved.branch_id);
+      branchSelect.dispatchEvent(new Event("change"));
+    }
+    if (saved)
+      requestForm.prepend(
+        el(
+          "p",
+          { class: "hint" },
+          "Đã tự điền nơi nhận của tài khoản. Chỉ sửa nếu bạn muốn giao đến vị trí khác.",
+        ),
+      );
   }
   async function action(order, name, body = {}, key) {
     const result = await api(
@@ -258,7 +294,7 @@ export function mountErrands(root) {
         "+ Tạo yêu cầu đi chợ",
         () => {
           if (!data.branches.length) throw Error("Tiệm chưa mở điểm phục vụ.");
-          createForm();
+          return createForm();
         },
         "primary",
       ),

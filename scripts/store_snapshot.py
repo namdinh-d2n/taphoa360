@@ -26,7 +26,7 @@ TABLES = (
     'online_items', 'online_events', 'online_invoices', 'payments',
     'shop_points_ledger', 'online_cash_handovers',
 )
-EXCLUDED = ('errand_branches', 'errand_photos','errand_allocations','errand_events','errand_money','errand_complaints','errand_items','errand_orders', 'password_reset_otps', 'password_resets', 'sessions', 'shop_sessions', 'login_attempts', 'registrations',
+EXCLUDED = ('customer_delivery_addresses', 'errand_branches', 'errand_photos','errand_allocations','errand_events','errand_money','errand_complaints','errand_items','errand_orders', 'password_reset_otps', 'password_resets', 'sessions', 'shop_sessions', 'login_attempts', 'registrations',
             'audit_log', 'online_finance_keys', 'ai_suggestions')
 REMOVED_COLUMNS = {
     'users': {'password_hash', 'email'},
@@ -136,7 +136,7 @@ def validate_snapshot(snapshot):
     if snapshot.get('format') != 'taphoa360-sanitized-store' or snapshot.get('format_version') != 1:
         raise ValueError('Unsupported snapshot format.')
     # Newer schemas add private recovery/errand data excluded from sanitized snapshots.
-    if snapshot.get('schema_version') not in {9, 10, 11, 12, SCHEMA_VERSION}:
+    if snapshot.get('schema_version') not in {9, 10, 11, 12, 13, SCHEMA_VERSION}:
         raise ValueError('Snapshot needs a compatible application schema.')
     if set(snapshot.get('tables', {})) != set(TABLES):
         raise ValueError('Unexpected or missing snapshot tables.')

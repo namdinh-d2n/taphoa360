@@ -23,7 +23,7 @@ const state = {
   storage: "",
   interest: sessionStorage.getItem("th360-interest") || "",
   page: 24,
-  zone: localStorage.getItem("th360-zone") || "",
+  zone: "",
   offset: 0,
 };
 let timer,
@@ -377,6 +377,15 @@ function categoriesActive() {
     );
 }
 function zoneNote() {
+  const saved = state.user?.saved_address;
+  $("#saved-address-summary").textContent = saved
+    ? `${saved.receiver} · ${saved.phone} · ${saved.address}`
+    : "";
+  $("#saved-address-summary").hidden = !saved;
+  $("#edit-address").textContent = saved
+    ? "Thay đổi địa chỉ"
+    : "Nhập địa chỉ nhận";
+
   const zone = state.data?.zones.find((z) => String(z.id) === state.zone);
   $("#delivery-note").textContent = zone
     ? "Phí " +
@@ -695,14 +704,127 @@ async function budgetDialog(kind) {
     body,
   );
 }
+function applySavedAddress(saved) {
+  state.address = saved || null;
+  state.zone = saved?.zone_available ? String(saved.zone_id) : "";
+  if (state.data) {
+    if (!state.data.zones.some((z) => String(z.id) === state.zone))
+      state.zone =
+        state.data.zones.length === 1 ? String(state.data.zones[0].id) : "";
+    $("#zone").value = state.zone;
+  }
+  zoneNote();
+}
+async function editDeliveryAddress(after) {
+  if (!state.user) return authDialog(() => editDeliveryAddress(after));
+  const accountId = state.user.id;
+  const address = await addressPicker(api, state.address || {});
+  const form = el("form");
+  fields(
+    form,
+    [
+      ["receiver", "Người nhận", "text"],
+      ["phone", "Số điện thoại nhận hàng", "tel"],
+      [
+        "zone_id",
+        "Khu giao của tiệm",
+        "text",
+        [
+          ["", "Chọn khu giao"],
+          ...(state.data?.zones || []).map((z) => [
+            z.id,
+            z.name + " · " + money(z.fee),
+          ]),
+        ],
+      ],
+    ],
+    {
+      receiver: state.address?.receiver || state.user.name,
+      phone: state.address?.phone || state.user.phone,
+      zone_id: state.zone,
+    },
+  );
+  if (!state.data?.zones.length) form.elements.zone_id.required = false;
+  form.append(
+    address.element,
+    el(
+      "p",
+      { class: "hint" },
+      "Địa chỉ được lưu riêng cho tài khoản và tự điền vào những lần mua sau. Bạn có thể thay đổi khi muốn nhận ở nơi khác.",
+    ),
+  );
+  const error = el("p", { class: "error", role: "alert" });
+  const save = el(
+    "button",
+    { type: "submit", class: "primary" },
+    "Lưu địa chỉ cho lần sau",
+  );
+  form.append(error, el("div", { class: "actions" }, save));
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    save.disabled = true;
+    error.textContent = "";
+    try {
+      const result = await api(
+        "/address",
+        {
+          ...address.value(),
+          expected_account_id: accountId,
+          receiver: form.elements.receiver.value,
+          phone: form.elements.phone.value,
+          zone_id: form.elements.zone_id.value
+            ? Number(form.elements.zone_id.value)
+            : null,
+        },
+        "PUT",
+      );
+      if (state.user?.id !== accountId)
+        throw Error("Tài khoản đã thay đổi. Hãy tải lại trang.");
+      state.user.saved_address = result.saved_address;
+      applySavedAddress(result.saved_address);
+      dialog.close();
+      toast("Đã lưu địa chỉ cho tài khoản. Lần sau bạn không cần nhập lại.");
+      window.dispatchEvent(
+        new CustomEvent("saved-delivery-address", {
+          detail: { accountId, saved: result.saved_address },
+        }),
+      );
+      if (after) await after();
+    } catch (err) {
+      error.textContent = err.message;
+    } finally {
+      save.disabled = false;
+    }
+  });
+  modal(
+    state.user.saved_address
+      ? "Thay đổi địa chỉ nhận hàng"
+      : "Lưu địa chỉ nhận hàng lần đầu",
+    form,
+  );
+}
+
 async function refreshUser() {
+  const previous = state.user?.id;
   try {
     state.user = await api("/me");
   } catch (error) {
     if (error.status !== 401) throw error;
     state.user = null;
   }
-  startErrandNotifications().catch(()=>{});
+  if (previous !== state.user?.id) {
+    state.address = null;
+    state.zone = "";
+    errandView?.close();
+    errandView = null;
+    errandStream?.close();
+    errandStream = null;
+    document.getElementById("errand-inline").hidden = true;
+    document.getElementById("browse").hidden = false;
+    document.querySelector(".cart-dock").hidden = false;
+  }
+  applySavedAddress(state.user?.saved_address);
+  startErrandNotifications().catch(() => {});
   $("#account").textContent = state.user
     ? state.user.name + " · " + state.user.points + " điểm"
     : "Đăng nhập";
@@ -739,7 +861,8 @@ function authDialog(after, register = false) {
       await api("/login", data);
       await refreshUser();
       dialog.close();
-      if (after) await after();
+      if (!state.user.saved_address) await editDeliveryAddress(after);
+      else if (after) await after();
       else accountDialog();
     } catch (err) {
       error.textContent = err.message;
@@ -952,14 +1075,36 @@ async function checkoutDialog() {
       ["note", "Ghi chú giao hàng", "text"],
     ],
     {
-      receiver: state.user.name,
-      phone: state.user.phone,
+      receiver: state.address?.receiver || state.user.name,
+      phone: state.address?.phone || state.user.phone,
       points_used: 0,
       note: "",
     },
   );
   const address = await addressPicker(api, state.address || {});
-  form.querySelector(".form-grid").prepend(address.element);
+  const saved = state.user.saved_address;
+  const addressDetails = el(
+    "details",
+    { class: "checkout-saved-address full", open: !saved },
+    el(
+      "summary",
+      {},
+      saved ? "Địa chỉ đã lưu · bấm để thay đổi" : "Nhập địa chỉ nhận hàng",
+    ),
+    address.element,
+  );
+  if (saved)
+    addressDetails.prepend(
+      el("p", { class: "address-preview" }, saved.address),
+    );
+  form.querySelector(".form-grid").prepend(addressDetails);
+  form.addEventListener(
+    "invalid",
+    () => {
+      addressDetails.open = true;
+    },
+    true,
+  );
   form.elements.note.required = false;
   const result = el("div");
   const error = el("p", { class: "error", role: "alert" });
@@ -1265,38 +1410,45 @@ async function showTrack(token) {
     button("Mở đơn của tôi / QR thanh toán", () => myOrders(), "primary"),
   );
 }
-$("#zone").onchange = () => {
+$("#zone").onchange = async () => {
+  const accountId = state.user?.id;
+  const old = state.zone;
   state.zone = $("#zone").value;
-  localStorage.setItem("th360-zone", state.zone);
   zoneNote();
+  if (!state.user?.saved_address) return;
+  $("#zone").disabled = true;
+  try {
+    const result = await api(
+      "/address",
+      {
+        expected_account_id: accountId,
+        zone_id: state.zone ? Number(state.zone) : null,
+      },
+      "PUT",
+    );
+    if (state.user?.id !== accountId) return;
+    state.user.saved_address = result.saved_address;
+    window.dispatchEvent(
+      new CustomEvent("saved-delivery-address", {
+        detail: { accountId, saved: result.saved_address },
+      }),
+    );
+  } catch (error) {
+    state.zone = old;
+    $("#zone").value = old;
+    zoneNote();
+    toast(error.message);
+  } finally {
+    $("#zone").disabled = false;
+  }
 };
 $("#category-group").onchange = () => {
   state.categoryGroup = $("#category-group").value;
   state.category = "";
   load().catch((e) => toast(e.message));
 };
-$("#edit-address").onclick = async () => {
-  try {
-    const address = await addressPicker(api, state.address || {});
-    const form = el("form", {}, address.element);
-    const save = el(
-      "button",
-      { type: "submit", class: "primary" },
-      "Dùng địa chỉ này",
-    );
-    form.append(el("div", { class: "actions" }, save));
-    form.onsubmit = (e) => {
-      e.preventDefault();
-      state.address = address.value();
-      $("#edit-address").textContent = "Sửa địa chỉ nhận";
-      dialog.close();
-      toast("Đã điền địa chỉ nhận. Chọn thêm khu giao của tiệm để xem phí.");
-    };
-    modal("Địa chỉ người nhận tại Việt Nam", form);
-  } catch (e) {
-    toast(e.message);
-  }
-};
+$("#edit-address").onclick = () =>
+  editDeliveryAddress().catch((error) => toast(error.message));
 $("#search").oninput = applyFilter;
 $("#storage").onchange = () => {
   state.storage = $("#storage").value;
@@ -1331,6 +1483,7 @@ $("#fresh-button").onclick = () => {
 async function init() {
   await Promise.all([load(), refreshUser()]);
   if (document.body.dataset.track) await showTrack(document.body.dataset.track);
+  else if (state.user && !state.user.saved_address) await editDeliveryAddress();
 }
 let trackingPoll = false;
 setInterval(async () => {
@@ -1353,33 +1506,61 @@ setInterval(async () => {
 }, 8000);
 init().catch((error) => ($("#page-error").textContent = error.message));
 
-let errandView=null,errandStream=null;
-async function openErrands(event){
+let errandView = null,
+  errandStream = null;
+async function openErrands(event) {
   event?.preventDefault();
-  if(!state.user){authDialog(()=>openErrands());return;}
-  document.getElementById("browse").hidden=true;
-  document.querySelector(".cart-dock").hidden=true;
-  document.getElementById("errand-inline").hidden=false;
-  document.getElementById("modal-close").onclick=()=>document.getElementById("modal").close();
-  if(!errandView){const module=await import("./errands-shop.js?v=2");errandView=module.mountErrands(document.getElementById("errand-root"));}
-  document.getElementById("errand-inline").scrollIntoView({behavior:"smooth",block:"start"});
+  if (!state.user) {
+    authDialog(() => openErrands());
+    return;
+  }
+  document.getElementById("browse").hidden = true;
+  document.querySelector(".cart-dock").hidden = true;
+  document.getElementById("errand-inline").hidden = false;
+  document.getElementById("modal-close").onclick = () =>
+    document.getElementById("modal").close();
+  if (!errandView) {
+    const module = await import("./errands-shop.js?v=2");
+    errandView = module.mountErrands(document.getElementById("errand-root"));
+  }
+  document
+    .getElementById("errand-inline")
+    .scrollIntoView({ behavior: "smooth", block: "start" });
 }
-document.getElementById("errand-entry").addEventListener("click",openErrands);
-document.getElementById("errand-service-open").addEventListener("click",openErrands);
-document.getElementById("errand-back").addEventListener("click",()=>{
-  document.getElementById("errand-inline").hidden=true;
-  document.getElementById("browse").hidden=false;
-  document.querySelector(".cart-dock").hidden=false;
-  errandView?.close();errandView=null;
+document.getElementById("errand-entry").addEventListener("click", openErrands);
+document
+  .getElementById("errand-service-open")
+  .addEventListener("click", openErrands);
+document.getElementById("errand-back").addEventListener("click", () => {
+  document.getElementById("errand-inline").hidden = true;
+  document.getElementById("browse").hidden = false;
+  document.querySelector(".cart-dock").hidden = false;
+  errandView?.close();
+  errandView = null;
 });
-async function startErrandNotifications(){
-  if(!state.user){errandStream?.close();errandStream=null;return;}
-  if(errandStream)return;
-  const {connectErrands}=await import("./errands-live.js?v=2");
-  errandStream=connectErrands("/api/shop/errands/events",async()=>{
-    const result=await api("/errands");
-    const waiting=result.orders.filter(o=>["ESTIMATE_REVIEW","CHANGE_REVIEW","FINAL_REVIEW"].includes(o.status)).length;
-    const badge=document.getElementById("errand-notifications");
-    if(badge)badge.textContent=waiting?`(${waiting} cần duyệt)`:"";
+async function startErrandNotifications() {
+  if (!state.user) {
+    errandStream?.close();
+    errandStream = null;
+    return;
+  }
+  if (errandStream) return;
+  const { connectErrands } = await import("./errands-live.js?v=2");
+  errandStream = connectErrands("/api/shop/errands/events", async () => {
+    const [result] = await Promise.all([api("/errands"), refreshUser()]);
+    const waiting = result.orders.filter((o) =>
+      ["ESTIMATE_REVIEW", "CHANGE_REVIEW", "FINAL_REVIEW"].includes(o.status),
+    ).length;
+    const badge = document.getElementById("errand-notifications");
+    if (badge) badge.textContent = waiting ? `(${waiting} cần duyệt)` : "";
   });
 }
+
+window.addEventListener("saved-delivery-address", (event) => {
+  if (state.user?.id !== event.detail.accountId) return;
+  state.user.saved_address = event.detail.saved;
+  applySavedAddress(event.detail.saved);
+});
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) refreshUser().catch(() => {});
+});
