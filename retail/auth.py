@@ -11,6 +11,7 @@ from .database import reading, transaction, one, rows
 from .common import fail, required, audit, record, now, validate_payload
 from .access import home_for
 from .password_recovery import normalize_email, ensure_email_available, invalidate_resets
+from .jwt_auth import create_jwt, decode_jwt
 
 router = APIRouter(dependencies=[Depends(validate_payload)])
 ROLES = {'owner', 'cashier', 'inventory', 'shipper'}
@@ -43,10 +44,28 @@ def same_origin(request):
 
 def current_user(request: Request):
     bearer = request.headers.get('authorization', '')
-    token = bearer[7:] if bearer.startswith('Bearer ') else request.cookies.get('taphoa_session', '')
-    with reading() as conn:
-        user = one(conn, '''SELECT u.id,u.username,u.name,u.role,u.employee_id,u.email,s.csrf FROM sessions s
-            JOIN users u ON s.user_id=u.id WHERE s.token_hash=? AND s.expires_at>? AND u.active=1''', (hashlib.sha256(token.encode()).hexdigest(), time.time()))
+    raw_token = bearer[7:] if bearer.startswith('Bearer ') else request.cookies.get('taphoa_session', '')
+    if not raw_token:
+        fail('Vui lòng đăng nhập', 401)
+
+    # 1. First try parsing as JWT
+    jwt_payload = decode_jwt(raw_token)
+    user = None
+    if jwt_payload and 'sub' in jwt_payload and jwt_payload.get('type') == 'staff':
+        user_id = jwt_payload['sub']
+        with reading() as conn:
+            user = one(conn, '''SELECT id,username,name,role,employee_id,email FROM users
+                WHERE id=? AND active=1''', (user_id,))
+        if user:
+            user = dict(user)
+            user['csrf'] = jwt_payload.get('csrf', '')
+    
+    # 2. Fallback to legacy/stateful database session token
+    if not user:
+        with reading() as conn:
+            user = one(conn, '''SELECT u.id,u.username,u.name,u.role,u.employee_id,u.email,s.csrf FROM sessions s
+                JOIN users u ON s.user_id=u.id WHERE s.token_hash=? AND s.expires_at>? AND u.active=1''', (hashlib.sha256(raw_token.encode()).hexdigest(), time.time()))
+
     if not user:
         fail('Vui lòng đăng nhập', 401)
     if request.method not in {'GET', 'HEAD', 'OPTIONS'}:
@@ -197,13 +216,21 @@ def login(data: dict, request: Request, response: Response):
                 fail('Tài khoản không thuộc vai trò đã chọn. Hãy chọn đúng trang đăng nhập.', 403)
             conn.execute('DELETE FROM login_attempts WHERE key=?', (key,))
             conn.execute('DELETE FROM sessions WHERE expires_at<?', (time.time(),))
-            token, csrf = secrets.token_urlsafe(48), secrets.token_urlsafe(32)
-            conn.execute('INSERT INTO sessions VALUES (?,?,?,?)', (hashlib.sha256(token.encode()).hexdigest(), user['id'], csrf, time.time() + 28800))
+            csrf = secrets.token_urlsafe(32)
+            jwt_expiry = getattr(config, 'JWT_STAFF_EXPIRY_SECONDS', 28800)
+            token = create_jwt({
+                'sub': user['id'],
+                'type': 'staff',
+                'username': user['username'],
+                'role': user['role'],
+                'csrf': csrf,
+            }, expires_in_seconds=jwt_expiry)
+            conn.execute('INSERT INTO sessions VALUES (?,?,?,?)', (hashlib.sha256(token.encode()).hexdigest(), user['id'], csrf, time.time() + jwt_expiry))
             audit(conn, user, 'LOGIN', user['id'], {})
     if not valid:
         fail('Tên đăng nhập hoặc mật khẩu chưa đúng', 401)
-    response.set_cookie('taphoa_session', token, httponly=True, secure=config.COOKIE_SECURE or request.url.scheme == 'https', samesite='lax', max_age=28800)
-    return {'success': True, 'csrf': csrf, 'token': token, 'role': user['role'], 'redirect_url': home_for(user['role'])}
+    response.set_cookie('taphoa_session', token, httponly=True, secure=config.COOKIE_SECURE or request.url.scheme == 'https', samesite='lax', max_age=jwt_expiry)
+    return {'success': True, 'csrf': csrf, 'token': token, 'token_type': 'Bearer', 'role': user['role'], 'redirect_url': home_for(user['role'])}
 
 
 @router.get('/api/session')

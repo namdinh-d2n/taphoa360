@@ -51,6 +51,11 @@ AI_IMAGE_MAX_BYTES = 8 * 1024 * 1024
 AI_IMAGE_MAX_PIXELS = 16_000_000
 AI_INVOICE_MODEL_PATH = BASE_DIR / '.local' / 'models' / 'latin_PP-OCRv5_rec_mobile.onnx'
 
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "taphoa360-jwt-insecure-secret-key-change-in-production-min32chars")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+JWT_STAFF_EXPIRY_SECONDS = int(os.getenv("JWT_STAFF_EXPIRY_SECONDS", "28800"))  # 8 hours
+JWT_SHOP_EXPIRY_SECONDS = int(os.getenv("JWT_SHOP_EXPIRY_SECONDS", "604800"))  # 7 days
+
 HOST = os.getenv("HOST", "127.0.0.1")
 PORT = int(os.getenv("PORT", "8000"))
 RELOAD = env_bool('RELOAD', not PRODUCTION)

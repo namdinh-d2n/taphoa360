@@ -10,6 +10,7 @@ import config
 from .auth import password_hash, verify, same_origin
 from .common import fail, required, validate_payload
 from .database import reading, transaction, one, rows
+from .jwt_auth import create_jwt, decode_jwt
 
 router = APIRouter(prefix="/api/shop", dependencies=[Depends(validate_payload)])
 
@@ -42,20 +43,44 @@ def limited(conn, key, maximum=10, seconds=900):
 
 
 def customer_user(request: Request):
-    token = request.cookies.get("taphoa_shop", "")
-    with reading() as conn:
-        user = one(
-            conn,
-            """SELECT a.id,a.phone,a.name,a.customer_id,c.points,s.csrf FROM shop_sessions s
-            JOIN shop_accounts a ON a.id=s.account_id JOIN customers c ON c.id=a.customer_id
-            WHERE s.token_hash=? AND s.expires_at>? AND a.active=1""",
-            (hashlib.sha256(token.encode()).hexdigest(), time.time()),
-        )
+    bearer = request.headers.get("authorization", "")
+    raw_token = bearer[7:] if bearer.startswith("Bearer ") else request.cookies.get("taphoa_shop", "")
+    if not raw_token:
+        fail("Vui lòng đăng nhập tài khoản khách hàng để đặt mua.", 401)
+
+    # 1. First try parsing as JWT
+    jwt_payload = decode_jwt(raw_token)
+    user = None
+    if jwt_payload and "sub" in jwt_payload and jwt_payload.get("type") == "shop_customer":
+        account_id = jwt_payload["sub"]
+        with reading() as conn:
+            user = one(
+                conn,
+                """SELECT a.id,a.phone,a.name,a.customer_id,c.points FROM shop_accounts a
+                JOIN customers c ON c.id=a.customer_id
+                WHERE a.id=? AND a.active=1""",
+                (account_id,),
+            )
+        if user:
+            user = dict(user)
+            user["csrf"] = jwt_payload.get("csrf", "")
+
+    # 2. Fallback to legacy database session token
+    if not user:
+        with reading() as conn:
+            user = one(
+                conn,
+                """SELECT a.id,a.phone,a.name,a.customer_id,c.points,s.csrf FROM shop_sessions s
+                JOIN shop_accounts a ON a.id=s.account_id JOIN customers c ON c.id=a.customer_id
+                WHERE s.token_hash=? AND s.expires_at>? AND a.active=1""",
+                (hashlib.sha256(raw_token.encode()).hexdigest(), time.time()),
+            )
+
     if not user:
         fail("Vui lòng đăng nhập tài khoản khách hàng để đặt mua.", 401)
     if request.method not in {"GET", "HEAD", "OPTIONS"}:
         same_origin(request)
-        if not hmac.compare_digest(
+        if not bearer.startswith("Bearer ") and not hmac.compare_digest(
             request.headers.get("x-csrf-token", "").encode(), user["csrf"].encode()
         ):
             fail("Phiên thao tác hết hạn. Hãy tải lại trang.", 403)
@@ -102,7 +127,15 @@ def login(data: dict, request: Request, response: Response):
     )
     if not valid or not user or not user["active"]:
         fail("Số điện thoại hoặc mật khẩu chưa đúng.", 401)
-    token, csrf = secrets.token_urlsafe(48), secrets.token_urlsafe(32)
+    csrf = secrets.token_urlsafe(32)
+    jwt_expiry = getattr(config, 'JWT_SHOP_EXPIRY_SECONDS', 7 * 86400)
+    token = create_jwt({
+        "sub": user["id"],
+        "type": "shop_customer",
+        "phone": user["phone"],
+        "customer_id": user["customer_id"],
+        "csrf": csrf,
+    }, expires_in_seconds=jwt_expiry)
     with transaction() as conn:
         conn.execute("DELETE FROM shop_sessions WHERE expires_at<?", (time.time(),))
         conn.execute(
@@ -111,7 +144,7 @@ def login(data: dict, request: Request, response: Response):
                 hashlib.sha256(token.encode()).hexdigest(),
                 user["id"],
                 csrf,
-                time.time() + 7 * 86400,
+                time.time() + jwt_expiry,
             ),
         )
     response.set_cookie(
@@ -120,10 +153,10 @@ def login(data: dict, request: Request, response: Response):
         httponly=True,
         secure=config.COOKIE_SECURE,
         samesite="lax",
-        max_age=7 * 86400,
+        max_age=jwt_expiry,
         path="/",
     )
-    return {"success": True}
+    return {"success": True, "token": token, "token_type": "Bearer", "csrf": csrf}
 
 
 @router.get("/me")

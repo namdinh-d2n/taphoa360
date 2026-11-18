@@ -159,7 +159,6 @@ def orders(status: str = '', customer_id: int | None = None, q: str = '', user=D
 
 @router.post('/api/v1/orders')
 @router.post('/api/create_order', include_in_schema=False)
-@router.post('/create_order.php', include_in_schema=False)
 @router.post('/create_order', include_in_schema=False)
 def create_order(data: dict, request: Request, user=Depends(require('cashier'))):
     with transaction() as conn:
@@ -447,7 +446,6 @@ def restore(name: str, data: dict, user=Depends(require())):
 
 
 @router.get('/api/search_inventory', include_in_schema=False)
-@router.get('/search_inventory.php', include_in_schema=False)
 @router.get('/search_inventory', include_in_schema=False)
 def search_inventory(keyword: str = '', user=Depends(require('cashier', 'inventory'))):
     with reading() as conn:
@@ -456,7 +454,6 @@ def search_inventory(keyword: str = '', user=Depends(require('cashier', 'invento
 
 
 @router.get('/api/get_merchant_orders', include_in_schema=False)
-@router.get('/get_merchant_orders.php', include_in_schema=False)
 @router.get('/get_merchant_orders', include_in_schema=False)
 def merchant_orders(user=Depends(require('cashier', 'inventory', 'shipper'))):
     with reading() as conn:
@@ -470,7 +467,6 @@ def merchant_orders(user=Depends(require('cashier', 'inventory', 'shipper'))):
 
 
 @router.get('/api/v1/events')
-@router.get('/stream_orders.php', include_in_schema=False)
 @router.get('/api/stream_orders', include_in_schema=False)
 @router.get('/stream_orders', include_in_schema=False)
 async def events(request: Request, user=Depends(require('cashier', 'inventory', 'shipper'))):
