@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 import config
 import db
 from app import app
-from retail.database import reading, transaction, one, rows, migrate
+from retail.database import reading, transaction, one, rows, migrate, SCHEMA_VERSION
 
 
 class RetailTests(unittest.TestCase):
@@ -544,7 +544,7 @@ class RetailTests(unittest.TestCase):
         with reading() as conn:
             for table,expected in before.items():
                 self.assertEqual(expected,rows(conn,'SELECT * FROM '+table),table)
-            self.assertEqual(one(conn,'SELECT MAX(version) AS n FROM schema_migrations')['n'],4)
+            self.assertEqual(one(conn,'SELECT MAX(version) AS n FROM schema_migrations')['n'],SCHEMA_VERSION)
             self.assertEqual(rows(conn,'SELECT * FROM registrations'),[])
 
 
@@ -584,6 +584,111 @@ class RetailTests(unittest.TestCase):
         self.assertEqual(response.status_code, 413)
         response = self.client.post('/api/login', content=iter([b'x' * 600000, b'y' * 600000]))
         self.assertEqual(response.status_code, 413)
+
+
+    def test_quick_create_supplier_product_does_not_receive_stock(self):
+        supplier = self.post('/api/v1/suppliers', {'name': 'New supplier'})['id']
+        path = f'/api/v1/suppliers/{supplier}/products'
+        result = self.post(path, {'product_name': 'New milk', 'unit': 'hop', 'price': 12000,
+                                  'cost_price': 8000, 'supplier_sku': 'MILK-01'})
+        product = result['product']
+        self.assertTrue(product['sku'].startswith('SP-'))
+        self.assertEqual(product['supplier_cost_price'], 8000)
+        self.assertEqual(product['supplier_sku'], 'MILK-01')
+        self.assertEqual(self.stock(product['id']), 0)
+        self.assertEqual(self.get(path)[0]['id'], product['id'])
+        with reading() as conn:
+            self.assertEqual(one(conn, 'SELECT COUNT(*) AS n FROM stock_movements WHERE product_id=?', (product['id'],))['n'], 0)
+            self.assertEqual(one(conn, 'SELECT COUNT(*) AS n FROM purchase_receipts WHERE supplier_id=?', (supplier,))['n'], 0)
+            self.assertEqual(one(conn, 'SELECT COUNT(*) AS n FROM account_entries WHERE party_id=? AND party_type=?', (supplier, 'SUPPLIER'))['n'], 0)
+        other = self.post('/api/v1/products', {'product_name': 'Other milk', 'sku': '', 'unit': 'hop', 'zone_code': 'A1'})
+        with reading() as conn:
+            self.assertNotEqual(product['sku'], one(conn, 'SELECT sku FROM products WHERE id=?', (other['id'],))['sku'])
+
+    def test_supplier_prices_are_independent_and_receipts_keep_history(self):
+        product = self.product(quantity=0)
+        first, second = [self.post('/api/v1/suppliers', {'name': name})['id'] for name in ['A', 'B']]
+        a, b = [f'/api/v1/suppliers/{ident}/products' for ident in [first, second]]
+        self.post(a, {'product_id': product, 'cost_price': 5000, 'supplier_sku': 'A-01'})
+        self.post(b, {'product_id': product, 'cost_price': 7000, 'supplier_sku': 'B-01'})
+        self.assertEqual(self.get(a)[0]['supplier_cost_price'], 5000)
+        self.assertEqual(self.get(b)[0]['supplier_cost_price'], 7000)
+        self.post('/api/v1/purchases', {'supplier_id': first, 'paid': 0, 'items': [
+            {'product_id': product, 'quantity': 3, 'cost_price': 5500, 'lot_code': 'OLD'}]})
+        self.assertEqual(self.stock(product), 3)
+        self.assertEqual(self.get(a)[0]['supplier_cost_price'], 5500)
+        self.post(a, {'product_id': product, 'cost_price': 9000})
+        self.assertEqual(self.get(a)[0]['supplier_sku'], 'A-01')
+        self.assertEqual(self.get(b)[0]['supplier_cost_price'], 7000)
+        with reading() as conn:
+            self.assertEqual(one(conn, 'SELECT cost_price FROM purchase_items WHERE product_id=?', (product,))['cost_price'], 5500)
+            self.assertEqual(one(conn, 'SELECT cost_price FROM stock_batches WHERE product_id=?', (product,))['cost_price'], 5500)
+            self.assertEqual(one(conn, 'SELECT cost_price FROM products WHERE id=?', (product,))['cost_price'], 5500)
+
+    def test_supplier_catalogue_filters_by_supplier_and_upserts_one_link(self):
+        product, other = self.product(quantity=0), self.product(quantity=0)
+        first, second = [self.post('/api/v1/suppliers', {'name': name})['id'] for name in ['A', 'B']]
+        a, b = [f'/api/v1/suppliers/{ident}/products' for ident in [first, second]]
+        self.post(a, {'product_id': product, 'cost_price': 100})
+        self.post(b, {'product_id': other, 'cost_price': 200})
+        self.post(a, {'product_id': product, 'cost_price': 300})
+        self.assertEqual([p['id'] for p in self.get(a)], [product])
+        self.assertEqual([p['id'] for p in self.get(b)], [other])
+        self.assertEqual(self.get(a)[0]['supplier_cost_price'], 300)
+
+    def test_supplier_quick_create_validation_rolls_back(self):
+        supplier = self.post('/api/v1/suppliers', {'name': 'A'})['id']
+        path = f'/api/v1/suppliers/{supplier}/products'
+        with reading() as conn:
+            count = one(conn, 'SELECT COUNT(*) AS n FROM products')['n']
+        data = {'product_name': 'Invalid new item', 'unit': 'cai', 'price': 1000}
+        for extra in [{'cost_price': -1}, {'cost_price': 1.5}, {'supplier_sku': 'x' * 65}, {'product_id': 999999}]:
+            self.post(path, {**data, **extra}, 404 if 'product_id' in extra else 400)
+        self.post('/api/v1/suppliers/999999/products', data, 404)
+        existing = self.get('/api/v1/products')[0]
+        self.post(path, {**data, 'sku': existing['sku']}, 409)
+        with reading() as conn:
+            self.assertEqual(one(conn, 'SELECT COUNT(*) AS n FROM products')['n'], count)
+        self.assertEqual(self.get(path), [])
+
+    def test_supplier_catalogue_permissions_and_csrf(self):
+        supplier = self.post('/api/v1/suppliers', {'name': 'A'})['id']
+        product = self.product(quantity=0)
+        path = f'/api/v1/suppliers/{supplier}/products'
+        data = {'product_id': product, 'cost_price': 5000}
+        self.post(path, data, 403, headers={'X-CSRF-Token': ''})
+        self.user('cashier')
+        self.login('cashier')
+        self.assertEqual(self.client.get(path).status_code, 403)
+        self.post(path, data, 403)
+        self.login()
+        self.user('inventory')
+        self.login('inventory')
+        self.post(path, data)
+        self.assertEqual(self.get(path)[0]['id'], product)
+        self.client.cookies.clear()
+        self.assertEqual(self.client.get(path).status_code, 401)
+
+    def test_supplier_catalogue_migration_preserves_data_and_uses_latest_price(self):
+        product = self.product(quantity=0)
+        first, second = [self.post('/api/v1/suppliers', {'name': name})['id'] for name in ['A', 'B']]
+        for supplier, cost in [(first, 3000), (second, 4000), (first, 5000)]:
+            self.post('/api/v1/purchases', {'supplier_id': supplier, 'paid': 0, 'items': [
+                {'product_id': product, 'quantity': 2, 'cost_price': cost}]})
+        tables = ['users', 'products', 'stock_batches', 'stock_movements', 'purchase_receipts', 'purchase_items', 'account_entries']
+        with transaction() as conn:
+            before = {table: rows(conn, 'SELECT * FROM ' + table) for table in tables}
+            conn.execute('DROP TABLE supplier_products')
+            conn.execute('DELETE FROM schema_migrations WHERE version=5')
+        migrate()
+        migrate()
+        with reading() as conn:
+            for table in tables:
+                self.assertEqual(rows(conn, 'SELECT * FROM ' + table), before[table], table)
+            self.assertEqual(rows(conn, 'PRAGMA foreign_key_check'), [])
+        self.assertEqual(self.get(f'/api/v1/suppliers/{first}/products')[0]['supplier_cost_price'], 5000)
+        self.assertEqual(self.get(f'/api/v1/suppliers/{second}/products')[0]['supplier_cost_price'], 4000)
+        self.assertTrue(list((Path(config.SQLITE_PATH).parent / 'backups').glob('before-v5-*.db')))
 
 if __name__ == '__main__':
     unittest.main()

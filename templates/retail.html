@@ -8,12 +8,13 @@
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/retail.css?v=3.1">
   <script type="module" src="/static/retail.js?v=3.1"></script>
+  <link rel="stylesheet" href="/static/errands.css?v=2">
 </head>
 <body data-page="{{ page }}">
   <a class="skip-link" href="#content">Đến nội dung chính</a>
   <div class="app-layout">
     <aside class="sidebar" id="sidebar">
-      <a href="/" class="brand"><span class="brand-mark">360</span><span>TẠP HÓA <b>360</b><small>KHÔNG GIAN QUẢN LÝ</small></span></a>
+      <a href="/admin" class="brand"><span class="brand-mark">360</span><span>TẠP HÓA <b>360</b><small>KHÔNG GIAN QUẢN LÝ</small></span></a>
       <nav id="navigation" aria-label="Điều hướng"></nav>
       <div class="sidebar-footer"><span class="avatar">{{ user.name[:1] }}</span><div><strong>{{ user.name }}</strong><small id="role-label"></small></div></div>
     </aside>

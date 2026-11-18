@@ -1,0 +1,16 @@
+# Optional local CPU OCR; no API account or key is needed.
+-r requirements.lock.txt
+rapidocr-onnxruntime==1.4.4
+onnxruntime==1.32.0
+Pillow==13.0.0
+numpy==2.4.6
+opencv-python==5.0.0.93
+protobuf==7.36.2
+pyclipper==1.4.0
+Shapely==2.2.0
+six==1.17.0
+flatbuffers==25.12.19
+PyYAML==6.0.3
+tqdm==4.70.1
+colorama==0.4.6
+packaging==26.3

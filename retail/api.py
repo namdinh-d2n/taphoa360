@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from .auth import require, current_user
 from .database import transaction, reading, rows, one
 from .common import fail, audit, record, day, validate_payload
-from . import inventory as stock, sales, people, reporting
+from . import inventory as stock, sales, people, reporting, rescue
 
 router = APIRouter(dependencies=[Depends(validate_payload)])
 
@@ -105,6 +105,18 @@ def create_customer(data: dict, user=Depends(require('cashier'))):
         return stock.save_party(conn, user, 'CUSTOMER', data)
 
 
+@router.get('/api/v1/suppliers/{ident}/products')
+def supplier_products(ident: int, user=Depends(require('inventory'))):
+    with reading() as conn:
+        return stock.supplier_products(conn, ident)
+
+
+@router.post('/api/v1/suppliers/{ident}/products')
+def save_supplier_product(ident: int, data: dict, user=Depends(require('inventory'))):
+    with transaction() as conn:
+        return stock.save_supplier_product(conn, user, ident, data)
+
+
 @router.patch('/api/v1/customers/{ident}')
 def edit_customer(ident: int, data: dict, user=Depends(require('cashier'))):
     with transaction() as conn:
@@ -147,7 +159,6 @@ def orders(status: str = '', customer_id: int | None = None, q: str = '', user=D
 
 @router.post('/api/v1/orders')
 @router.post('/api/create_order', include_in_schema=False)
-@router.post('/create_order.php', include_in_schema=False)
 @router.post('/create_order', include_in_schema=False)
 def create_order(data: dict, request: Request, user=Depends(require('cashier'))):
     with transaction() as conn:
@@ -223,6 +234,39 @@ def close_cash(ident: int, data: dict, user=Depends(require('cashier', 'inventor
 def suggestions(user=Depends(require('inventory'))):
     with reading() as conn:
         return stock.suggestions(conn)
+
+
+@router.get('/api/v1/rescue')
+def rescue_analysis(days: int = 7, user=Depends(require('inventory'))):
+    with reading() as conn:
+        return rescue.analyze(conn, days)
+
+
+@router.post('/api/v1/rescue/quote')
+def rescue_quote(data: dict, user=Depends(require('inventory'))):
+    with reading() as conn:
+        return rescue.quote(conn, data)
+
+
+@router.get('/api/v1/rescue/campaigns')
+def rescue_campaigns(user=Depends(require('cashier', 'inventory'))):
+    with reading() as conn:
+        return rescue.campaigns(conn)
+
+
+@router.post('/api/v1/rescue/campaigns')
+def create_rescue_campaign(data: dict, user=Depends(require())):
+    with transaction() as conn:
+        return rescue.create_campaign(conn, user, data)
+
+
+@router.post('/api/v1/rescue/campaigns/{ident}/stop')
+def stop_rescue_campaign(ident: int, user=Depends(require())):
+    with transaction() as conn:
+        record(conn,'rescue_campaigns',ident)
+        conn.execute('UPDATE rescue_campaigns SET active=0 WHERE id=?',(ident,))
+        audit(conn,user,'STOP_RESCUE_COMBO',ident,{})
+    return {'success':True}
 
 
 @router.post('/api/v1/suggestions/apply')
@@ -402,7 +446,6 @@ def restore(name: str, data: dict, user=Depends(require())):
 
 
 @router.get('/api/search_inventory', include_in_schema=False)
-@router.get('/search_inventory.php', include_in_schema=False)
 @router.get('/search_inventory', include_in_schema=False)
 def search_inventory(keyword: str = '', user=Depends(require('cashier', 'inventory'))):
     with reading() as conn:
@@ -411,7 +454,6 @@ def search_inventory(keyword: str = '', user=Depends(require('cashier', 'invento
 
 
 @router.get('/api/get_merchant_orders', include_in_schema=False)
-@router.get('/get_merchant_orders.php', include_in_schema=False)
 @router.get('/get_merchant_orders', include_in_schema=False)
 def merchant_orders(user=Depends(require('cashier', 'inventory', 'shipper'))):
     with reading() as conn:
@@ -425,7 +467,6 @@ def merchant_orders(user=Depends(require('cashier', 'inventory', 'shipper'))):
 
 
 @router.get('/api/v1/events')
-@router.get('/stream_orders.php', include_in_schema=False)
 @router.get('/api/stream_orders', include_in_schema=False)
 @router.get('/stream_orders', include_in_schema=False)
 async def events(request: Request, user=Depends(require('cashier', 'inventory', 'shipper'))):

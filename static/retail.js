@@ -1,6 +1,7 @@
 import { state, api, el, setRefresh, label, can, toast } from "./ui.js?v=3.1";
 import { navIcon } from "./icons.js?v=3.1";
 import { renderPOS } from "./pos.js?v=3.1";
+import { renderOnline } from "./online-admin.js?v=4.0";
 import {
   renderProducts,
   renderInventory,
@@ -20,7 +21,11 @@ import {
   renderDelivery,
 } from "./workspaces.js?v=3.1";
 
+import { renderErrands } from "./errands-admin.js?v=2";
+
 const pages = {
+  errands: ["Đi chợ hộ", "Khách duyệt hàng, quyết toán và xử lí phản hồi.", "/errands", "▣", ["cashier","inventory","shipper"], renderErrands],
+  online: ["Đơn & thu chi online", "Duyệt thanh toán, xuất hóa đơn, soạn hàng và điều phối giao.", "/online", "▣", ["cashier","inventory","shipper"], renderOnline],
   owner_portal: [
     "Quản lý cửa hàng",
     "Chủ tiệm quản lý tất cả hoạt động và các khu làm việc.",

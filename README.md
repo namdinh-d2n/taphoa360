@@ -22,9 +22,23 @@ if (!(Test-Path .env)) { Copy-Item .env.example .env }
 .\.venv\Scripts\python.exe app.py
 ```
 
-Mở **http://127.0.0.1:8000**. Lần đầu, tạo tên đăng nhập và mật khẩu chủ tiệm
+Mở **http://127.0.0.1:8000/admin**. Lần đầu, tạo tên đăng nhập và mật khẩu chủ tiệm
 (từ 10 ký tự). Không có mật khẩu quản trị mặc định. Sau đó đăng nhập và thêm tài khoản
 cho từng nhân viên tại **Cài đặt → Tài khoản & quyền**.
+
+### Lối vào khách hàng và nội bộ
+
+- Địa chỉ chính `/`: khách hoặc người chưa đăng nhập nội bộ được đưa tới `/shop`,
+  có mua hàng và Đi chợ hộ. Nếu còn phiên đăng nhập nhân viên hợp lệ, tự vào khu
+  làm việc đúng vai trò: chủ tiệm `/owner`, thu ngân `/cashier`, kiểm kho
+  `/inventory`, giao hàng `/shipper`.
+- `/admin`: lối vào chủ tiệm/nhân viên. Chưa đăng nhập thì mở trang đăng nhập nội
+  bộ; đã đăng nhập thì vào khu làm việc. Cửa hàng mới chưa có chủ tiệm được đưa
+  tới `/setup`. Nút bật hệ thống trên máy tiệm cũng mở lối này.
+- Khách có thể vào `/shop` trực tiếp. Ở cuối trang có liên kết **Chủ tiệm & nhân
+  viên**; trang đăng nhập nội bộ có nút về trang mua hàng. Tài khoản khách mua
+  hàng không cấp quyền vào nội bộ. Nếu cùng trình duyệt có cả hai phiên, địa chỉ
+  chính ưu tiên phiên nhân viên; `/shop` vẫn mở được để xem trải nghiệm khách.
 
 ### Đăng nhập và khu làm việc theo vai trò
 
@@ -45,6 +59,74 @@ và thu hồi phiên hiện tại trước khi về trang đăng nhập của va
 Số lượng nhập/bán/kiểm kê mới là số nguyên (1, 2, 3…), ô nhập tăng/giảm mỗi lần 1 và API
 từ chối số lẻ. POS hiển thị phần nguyên của lượng tồn có thể bán. Số lẻ đã lưu trước nâng cấp
 không bị tự ý làm tròn trong database/lịch sử; dùng kiểm kê với lý do để điều chỉnh tồn thật.
+
+### Quên mật khẩu qua email OTP
+
+Mở **Quên mật khẩu?** tại `/forgot-password` hoặc từ trang đăng nhập:
+
+1. Nhập Gmail/email khôi phục đã liên kết với tài khoản cửa hàng, bấm **Gửi mã OTP**.
+2. Mở hộp thư, lấy mã OTP **6 chữ số** rồi nhập lại trên trang khôi phục.
+3. Bấm **Xác thực OTP**. Chỉ khi xác thực đúng, form đặt mật khẩu mới mới xuất hiện.
+4. Nhập mật khẩu mới từ 10–200 ký tự, nhập lại để xác nhận rồi lưu; đăng nhập lại.
+
+OTP có hiệu lực **10 phút**, chỉ xác thực thành công một lần; mỗi mã được nhập
+sai tối đa **5 lần**. Có thể gửi lại sau **60 giây**; mã cũ mất hiệu lực. Giới hạn
+5 lần gửi/email/giờ và 20 lần gửi/địa chỉ truy cập/giờ. Sau xác thực, người dùng có
+5 phút để đặt mật khẩu mới. Tải lại trang bắt đầu lại bước email.
+
+Hệ thống không cho đặt lại mật khẩu chỉ bằng email hoặc OTP chưa xác thực. Sau
+khi đổi mật khẩu, mọi phiên đăng nhập, OTP và quyền đặt lại mật khẩu của tài khoản
+đều bị thu hồi. Email không tồn tại hoặc tài khoản đã khóa nhận cùng thông báo,
+không gửi thư. Tính năng dành cho tài khoản nội bộ; tài khoản khách `/shop` dùng
+luồng riêng.
+
+Email có thể khai báo khi thiết lập/đăng ký/tạo tài khoản, tại **Cài đặt → Tài khoản
+& quyền**, hoặc **Nhân sự → Email khôi phục** (cần mật khẩu hiện tại). Mỗi email chỉ
+liên kết một tài khoản. Kiểm tra địa chỉ trước khi lưu; OTP xác minh quyền truy cập
+hộp thư tại thời điểm khôi phục.
+
+Nếu chủ tiệm cũ chưa có email và không đăng nhập được, quản trị viên có quyền vào
+máy chủ có thể liên kết email sau khi xác nhận người sở hữu:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/set_recovery_email.py --username TEN_DANG_NHAP --email EMAIL_CUA_CHU_TIEM
+```
+
+Công cụ chọn chủ tiệm đang hoạt động, sao lưu trước khi cập nhật, không đổi mật
+khẩu hay dữ liệu kinh doanh. Không có API công khai liên kết email cho người chưa
+đăng nhập.
+
+Cấu hình gửi thư trong `.env` trên máy chạy server, rồi khởi động lại:
+
+```dotenv
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURITY=starttls
+SMTP_USERNAME=dia-chi-gui@gmail.com
+SMTP_PASSWORD=
+SMTP_FROM=dia-chi-gui@gmail.com
+```
+
+Điền mật khẩu ứng dụng Gmail vào `SMTP_PASSWORD` trên máy của bạn. Có thể dùng
+máy chủ SMTP khác hoặc TLS trực tiếp với `SMTP_SECURITY=ssl` và cổng tương ứng.
+Thông tin xác thực gửi qua kết nối TLS có kiểm tra chứng chỉ. OTP nằm trong nội
+dung thư; không cần đường dẫn đặt lại mật khẩu hoặc cấu hình origin riêng cho
+thư. `PUBLIC_ORIGIN` vẫn dùng cho kiểm tra nguồn yêu cầu khi chạy sau proxy.
+
+Nếu chưa cấu hình SMTP, trang báo chưa sẵn sàng. Nếu gửi thư thất bại, server hủy
+OTP của lần gửi đó và ghi cảnh báo chung; không ghi mã, nội dung thư hoặc thông
+tin SMTP bí mật vào log. Mã OTP không được trả về API. Quyền đặt mật khẩu mới chỉ
+cấp sau xác thực OTP và được giữ trong bộ nhớ trang, không lưu trong URL/storage.
+Bộ kiểm thử dùng SMTP giả lập; cần cấu hình gửi thư để kiểm tra hộp Gmail thực.
+
+API: `POST /api/forgot-password` gửi email và trả mã yêu cầu ẩn danh;
+`POST /api/verify-reset-otp` nhận `challenge_id`, `otp`, trả `reset_token` sau khi
+xác thực; `POST /api/reset-password` nhận `token`, `password`, `confirm_password`.
+
+Nâng schema 10 → 11 tạo backup `before-v11-*.db`, thêm bảng OTP và vô hiệu hóa
+liên kết khôi phục cũ. Email chủ tiệm và dữ liệu kinh doanh được giữ nguyên. Khôi
+phục backup xóa OTP/quyền đặt lại mật khẩu; bản xuất review loại email/OTP/token,
+vẫn đọc được snapshot review schema 9 và 10.
 
 ### Đăng ký theo vai trò
 
@@ -102,7 +184,83 @@ Có thể dùng `BAT_TAPHOA360.bat --no-browser` nếu không muốn tự mở t
 - Runtime mới không dùng MySQL. Các cấu hình MySQL và module cũ còn giữ để tham khảo,
   chưa có migration cho các nghiệp vụ v3 trên MySQL.
 
+## Địa chỉ nhận hàng theo tài khoản
+
+Khách đăng nhập lần đầu chưa có địa chỉ sẽ được mời lưu người nhận, số điện thoại,
+địa chỉ và khu giao. Các lần sau thông tin tự hiện tại **Giao tới** và tự điền
+checkout; chọn **Thay đổi địa chỉ** khi muốn nhận tại nơi khác. Vùng giao đã chọn
+cũng lưu theo tài khoản. Địa chỉ tồn tại sau tải lại, đăng xuất/đăng nhập lại hoặc
+đổi thiết bị; không lấy địa chỉ của tài khoản trước trên cùng trình duyệt.
+
+Đơn đi chợ hộ tự điền cùng nơi nhận và cửa hàng đã chọn lần trước. Khi đặt thành
+công một đơn với nơi nhận khác, địa chỉ mới được nhớ cho lần sau. Gửi lại cùng
+đơn không ghi đè địa chỉ vừa sửa; thay đổi nơi nhận mặc định không sửa địa chỉ các
+đơn đã tạo. Phí và vùng phục vụ vẫn được kiểm tra lại, không tự mở rộng vùng giao.
+
+Thông tin lưu ở server và chỉ tài khoản đăng nhập đó được đọc/sửa; bản xuất
+review không chứa địa chỉ này. Migration schema 14 tạo backup trước nâng cấp,
+không tự lấy địa chỉ từ lịch sử đơn của khách cũ. Khách cần nhập lần đầu một lần.
+
+## Đi chợ hộ
+
+Khách mở Đi chợ hộ ngay trong `/shop` hoặc vào `/shop/errands`, nhân viên vào `/errands`. Trạng thái cập nhật trực tiếp, chọn tỉnh/cửa hàng demo, số lượng nguyên và chuyển khoản qua QR. Hỗ trợ tiêu chí chất lượng,
+khách duyệt thay thế và tổng cuối trước khi mua, đối soát thu/hoàn dư có chứng từ
+và phản hồi sau nhận hàng. Xem [ERRANDS.md](ERRANDS.md) để vận hành và phân quyền.
+
 ## Quy trình sử dụng
+
+### Thêm hàng nhanh và danh mục nhà cung cấp
+
+- Vào **Nhà cung cấp → Sản phẩm cung cấp** để xem danh mục riêng, thêm sản phẩm
+  có sẵn hoặc tạo sản phẩm mới. Một mặt hàng có thể thuộc nhiều nhà cung cấp;
+  mỗi nơi có giá nhập và mã hàng riêng. Có thể sửa giá/mã trong tab này.
+- Vào **Kho hàng → + Nhập hàng**, chọn nhà cung cấp rồi gõ tên, SKU, mã vạch
+  hoặc mã hàng nhà cung cấp để tìm. Tìm kiếm hỗ trợ tiếng Việt không dấu,
+  phím lên/xuống và Enter. Chỉ hàng đang bán của nhà cung cấp được đưa vào kết quả.
+- Nếu chưa có hàng, bấm **+ Thêm sản phẩm mới** ngay ở dòng nhập; điền tên,
+  đơn vị, giá bán, giá nhập và mã hàng tùy chọn. Để trống SKU để tự tạo mã.
+  Dùng **+ Hàng có sẵn vào danh mục** để liên kết sản phẩm đã có trong cửa hàng.
+  Thao tác này giữ nguyên các dòng, số lượng, mã lô, hạn dùng và ghi chú của phiếu.
+- Lưu danh mục chỉ tạo hàng/liên kết, chưa tăng tồn hay phát sinh công nợ.
+  Bấm **Ghi nhận phiếu nhập** mới tăng tồn, ghi thanh toán và công nợ. Giá nhập
+  được gợi ý theo nhà cung cấp và có thể sửa theo hóa đơn; giá thực nhập trở thành
+  giá gợi ý cho lần tiếp theo. Giá trên phiếu và lô cũ được giữ nguyên.
+- Khi đổi nhà cung cấp, chọn lại sản phẩm theo danh mục mới. Các ô số lượng,
+  mã lô, hạn dùng và ghi chú vẫn được giữ.
+
+Schema 5 bổ sung `supplier_products`, tự sao lưu trước nâng cấp và lấy giá nhập
+gần nhất của từng cặp nhà cung cấp/sản phẩm từ phiếu cũ để tạo danh mục ban đầu.
+Không tự gán các hàng chưa từng nhập cho một nhà cung cấp. Bản sao trước nâng cấp
+được giữ để phục hồi thủ công; giao diện khôi phục yêu cầu đúng schema hiện tại.
+
+API danh mục: `GET/POST /api/v1/suppliers/{id}/products` (chủ tiệm/kiểm kho).
+POST với `product_id`, `cost_price`, `supplier_sku` để thêm/cập nhật liên kết;
+bỏ `product_id` và gửi `product_name`, `unit`, `price` để tạo hàng mới cùng liên kết
+trong một transaction. `sku` và `barcode` là tùy chọn khi tạo mới.
+
+### Quy trình vận hành
+
+**Giải cứu hàng cận hạn:** vào **Đề xuất thông minh** để xem lô sắp hết hạn,
+mục tiêu bán mỗi ngày và gợi ý ghép hàng. Chủ tiệm tính thử giá/lãi rồi bật combo;
+thu ngân chọn bán tại POS. Phân tích dùng lịch sử cửa hàng, không tốn phí API.
+Xem [RESCUE.md](RESCUE.md) về cách dùng, giá vốn, giới hạn lượt và điều kiện dự báo.
+
+**Cửa hàng online:** mở `/shop` để khách xem hàng không cần đăng nhập; khi đặt giao,
+khách đăng nhập số điện thoại để giữ giỏ, theo dõi đơn và tích điểm. Tiệm khai báo
+vùng/phí giao, COD hoặc QR, xử lý thiếu hàng, kiểm hàng khi nhận, hoàn tiền phần bị
+từ chối, danh mục hàng tươi/đông lạnh và sale theo giờ trong mục **Cửa hàng online**.
+Xem [ONLINE.md](ONLINE.md) về luồng khách, vận hành cuối ngày, quyền và API.
+
+Đơn QR mới hiện mã ngay sau xác nhận đặt hàng, giữ hàng 30 phút. Khách bấm
+**Xác nhận đã thanh toán** để gửi đối chiếu; thu ngân/chủ tiệm duyệt tiền thực
+nhận mới xuất hóa đơn nội bộ và chuyển soạn/giao. Vào **Đơn & thu chi online**
+(`/online`) để lọc đơn, phân công, soạn từng món, đối chiếu tiền, thu/chi/hoàn và
+nhận bàn giao COD; mặc định chủ tiệm phụ trách, có thể chỉ định thu ngân/điều phối.
+
+**AI đọc ảnh hóa đơn:** trong phiếu nhập, bấm **AI đọc ảnh hóa đơn** để nhận dạng
+và ghép sản phẩm, kiểm tra kết quả rồi đưa vào bản nháp. AI chạy cục bộ, không dùng
+API trả phí và chỉ ghi kho sau khi người dùng xác nhận phiếu. Xem [AI_LOCAL.md](AI_LOCAL.md)
+để biết cách cài trên máy khác, định dạng ảnh và giới hạn nhận dạng.
 
 1. **Thiết lập:** tạo chủ tiệm; thêm hồ sơ nhân viên, tài khoản và liên kết nhân viên.
 2. **Hàng hóa:** thêm SKU, mã vạch, đơn vị, giá, khu/kệ và ngưỡng tồn. Thêm nhà cung cấp.
@@ -205,3 +363,9 @@ Không ghi vào database cửa hàng. Kiểm tra giao diện trên server thử 
 - Đơn cũ thiếu phân bổ lô/thanh toán được giữ để tra cứu; không tự động hoàn/hủy tồn của chúng.
 
 Xem [SYSTEM_OVERVIEW.md](SYSTEM_OVERVIEW.md) để biết cấu trúc và các bất biến dữ liệu.
+
+## Dữ liệu demo để duyệt
+
+Bản snapshot đã ẩn thông tin riêng và hướng dẫn tạo database demo mới nằm trong
+[DATA_REVIEW.md](DATA_REVIEW.md). Có giá, tồn và nghiệp vụ để review; không gồm
+mật khẩu, phiên đăng nhập, địa chỉ khách hay cấu hình ngân hàng thật.

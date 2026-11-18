@@ -11,6 +11,7 @@
 <form id="register-form"><input type="hidden" name="role" value="{{ role }}">
 <label>Họ và tên<input name="name" required autocomplete="name" maxlength="100" autofocus></label>
 <label>Số điện thoại <span class="hint">Không bắt buộc</span><input name="phone" type="tel" autocomplete="tel" maxlength="30"></label>
+<label>Email khôi phục <span class="hint">Không bắt buộc</span><input name="email" type="email" autocomplete="email" maxlength="254"><small>Dùng để nhận mã OTP khi quên mật khẩu.</small></label>
 <label>Tên đăng nhập<input name="username" required autocomplete="username" minlength="3" maxlength="64" pattern="[a-zA-Z0-9_.-]+"><small>3–64 ký tự: chữ, số, dấu chấm, gạch ngang hoặc gạch dưới.</small></label>
 <label>Mật khẩu<input name="password" type="password" required autocomplete="new-password" minlength="10" maxlength="200"></label>
 <label>Nhập lại mật khẩu<input name="confirm_password" type="password" required autocomplete="new-password" minlength="10" maxlength="200"></label>

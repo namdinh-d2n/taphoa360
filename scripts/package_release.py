@@ -8,14 +8,19 @@ ROOT = Path(__file__).resolve().parents[1]
 FILES = [
     'app.py', 'config.py', 'db.py', 'serve.py', 'start_local.py',
     'BAT_TAPHOA360.bat', 'run.bat', 'requirements.txt',
-    'requirements.lock.txt', 'requirements-dev.txt', 'README.md',
+    'requirements.lock.txt', 'requirements-dev.txt', 'requirements-ai.txt', 'README.md',
+    'AI_LOCAL.md', 'ONLINE.md', 'RESCUE.md', 'CATALOG_DATA.md', 'DATA_REVIEW.md',
     'DEPLOY.md', 'DEPLOY_STATUS.md', 'SYSTEM_OVERVIEW.md', 'QA_REPORT.md', 'Dockerfile',
     '.dockerignore', '.gitignore', '.env.example',
     '.github/workflows/checks.yml', 'scripts/package_release.py',
     'scripts/pythonanywhere_bootstrap.py', 'scripts/deploy_pythonanywhere.py',
+    'scripts/build_reference_catalog.py', 'scripts/import_catalog_reference.py',
+    'scripts/setup_local_ai.py', 'scripts/update_vietnam_addresses.py', 'scripts/store_snapshot.py',
 ]
-GLOBS = ['retail/*.py', 'static/*.js', 'static/*.css', 'static/*.svg', 'tests/*.py']
-TEMPLATES = ['login', 'register', 'retail', 'receipt']
+GLOBS = ['retail/*.py', 'static/*.js', 'static/*.css', 'static/*.svg',
+         'static/catalog-images/*.webp', 'static/catalog-images/*.svg',
+         'data/*.json', 'tests/*.py']
+TEMPLATES = ['login', 'register', 'retail', 'receipt', 'shop', 'online_invoice']
 
 
 def main():

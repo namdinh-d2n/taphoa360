@@ -15,6 +15,8 @@ PAGE_ROLES = {
     'suppliers': ('inventory',), 'cash': ('cashier', 'inventory'),
     'hr': ('cashier', 'inventory', 'shipper'), 'reports': (),
     'suggestions': ('inventory',), 'settings': (),
+    'online': ('cashier','inventory','shipper'),
+    'errands': ('cashier','inventory','shipper'),
 }
 
 

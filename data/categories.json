@@ -1,0 +1,19 @@
+[
+  {"name":"Bánh kẹo & ăn vặt","storage":"DRY","categories":["Snack & bim bim","Bánh quy","Bánh gạo","Bánh xốp","Bánh quế","Bánh que","Bánh Chocopie","Bánh bông lan","Bánh tươi & sandwich","Kẹo cứng","Kẹo dẻo & marshmallow","Kẹo cao su","Socola","Hạt dinh dưỡng","Trái cây sấy","Rau câu & thạch","Khô ăn liền","Cơm cháy & bánh tráng"]},
+  {"name":"Sữa & chế phẩm sữa","storage":"DRY","categories":["Sữa tươi","Sữa hạt & sữa đậu","Sữa đặc","Sữa bột & dinh dưỡng","Sữa chua uống","Sữa chua ăn","Phô mai & bơ sữa"]},
+  {"name":"Đồ uống","storage":"DRY","categories":["Nước suối & khoáng","Nước ngọt","Trà đóng chai","Nước ép & nước trái cây","Nước tăng lực & thể thao","Nước yến","Cà phê uống liền","Bia & đồ uống có cồn"]},
+  {"name":"Cà phê, trà & ngũ cốc","storage":"DRY","categories":["Cà phê hòa tan","Cà phê rang xay","Trà & túi lọc","Ngũ cốc & yến mạch"]},
+  {"name":"Mì, cháo & đồ khô","storage":"DRY","categories":["Mì ăn liền","Cháo ăn liền","Phở, bún & miến","Nui & mì Ý","Gạo & nếp","Bột các loại","Đậu & thực phẩm khô","Rong biển nấu ăn"]},
+  {"name":"Gia vị & nấu ăn","storage":"DRY","categories":["Dầu ăn","Nước mắm","Nước tương","Muối, đường & tiêu","Hạt nêm & bột ngọt","Tương ớt & sốt","Gia vị nấu sẵn","Giấm & dầu hào"]},
+  {"name":"Đồ hộp & chế biến","storage":"DRY","categories":["Cá hộp","Thịt hộp & pate","Xúc xích ăn liền","Đồ chay","Nước cốt dừa & đồ hộp khác"]},
+  {"name":"Rau, củ & nấm","storage":"FRESH","categories":["Rau lá","Củ & quả nấu ăn","Nấm","Rau gia vị"]},
+  {"name":"Trái cây","storage":"FRESH","categories":["Trái cây tươi"]},
+  {"name":"Thịt, cá & trứng","storage":"FRESH","categories":["Thịt heo","Thịt bò","Thịt gà & vịt","Cá & hải sản tươi","Trứng"]},
+  {"name":"Thực phẩm đông lạnh","storage":"FROZEN","categories":["Thịt & hải sản đông lạnh","Cá viên & viên thả lẩu","Chả giò & há cảo","Thực phẩm chế biến đông lạnh","Kem"]},
+  {"name":"Thực phẩm mát","storage":"CHILLED","categories":["Xúc xích & giò chả mát","Thực phẩm chế biến mát"]},
+  {"name":"Giặt giũ & vệ sinh nhà","storage":"HOUSEHOLD","categories":["Nước giặt & bột giặt","Nước xả vải","Nước rửa chén","Lau nhà & tẩy rửa","Khử mùi & côn trùng"]},
+  {"name":"Chăm sóc cá nhân","storage":"HOUSEHOLD","categories":["Dầu gội & dầu xả","Sữa tắm & xà phòng","Kem đánh răng","Bàn chải & chăm sóc răng","Băng vệ sinh","Khăn ướt & khăn giấy","Giấy vệ sinh","Chăm sóc da"]},
+  {"name":"Mẹ & bé","storage":"HOUSEHOLD","categories":["Tã & bỉm","Tắm gội & chăm sóc bé","Chăm sóc răng cho bé","Giặt xả cho bé","Đồ dùng cho bé"]},
+  {"name":"Đồ dùng gia đình","storage":"HOUSEHOLD","categories":["Túi rác & túi đựng","Pin & đồ điện nhỏ","Màng bọc & giấy bạc","Đồ dùng bếp","Đồ dùng một lần","Văn phòng phẩm"]},
+  {"name":"Thú cưng","storage":"DRY","categories":["Thức ăn chó","Thức ăn mèo","Vệ sinh thú cưng"]}
+]

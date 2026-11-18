@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir -r requirements.lock.txt
 COPY app.py config.py db.py serve.py ./
 COPY retail ./retail
 COPY static ./static
+COPY data ./data
 COPY templates ./templates
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \

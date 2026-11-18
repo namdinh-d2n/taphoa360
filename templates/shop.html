@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#15543d" />
+    <title>Tạp hóa 360 · Tiệm gần nhà</title>
+    <link rel="icon" href="/static/favicon.svg" />
+    <link rel="stylesheet" href="/static/shop.css?v=4.2" />
+    <link rel="stylesheet" href="/static/errands.css?v=2" />
+    <script src="/static/shop.js?v=4.2" type="module"></script>
+  </head>
+  <body data-track="{{ tracking_token }}">
+    <a class="skip" href="#shop-main">Đến nội dung</a>
+    <div class="promise">
+      <span>Tiệm quen · Mua theo cách mới</span
+      ><span>Kiểm hàng khi nhận · Tích điểm theo hàng thực nhận</span>
+    </div>
+    <header class="shop-header">
+      <a class="brand" href="/shop"
+        ><span>360</span><strong id="store-name">Tạp hóa gần nhà</strong></a
+      ><label class="search"
+        ><span>Tìm hàng</span
+        ><input
+          id="search"
+          type="search"
+          placeholder="Hôm nay bạn cần gì? Sữa, rau, đồ ăn vặt…"
+          autocomplete="off"
+      /></label>
+      <nav>
+        <a class="errand-nav-link" id="errand-entry" href="/shop/errands"
+          >Đi chợ hộ <span id="errand-notifications"></span
+        ></a>
+        <button id="account">Đăng nhập</button
+        ><button id="my-orders">Đơn của tôi</button
+        ><button id="cart-button" class="primary">
+          Giỏ · <b id="cart-count">0</b>
+        </button>
+      </nav>
+    </header>
+    <div class="delivery">
+      <label
+        >Giao tới
+        <select id="zone">
+          <option value="">Chọn khu/phường/chung cư</option>
+        </select></label
+      ><button id="edit-address" type="button">Nhập địa chỉ nhận</button
+      ><span id="delivery-note">Chọn khu vực để xem phí giao.</span>
+      <p
+        id="saved-address-summary"
+        class="saved-delivery-summary"
+        role="status"
+        hidden
+      ></p>
+    </div>
+    <main id="shop-main">
+      <section id="errand-inline" hidden>
+        <div class="errand-inline-top">
+          <button id="errand-back" type="button">← Về mua hàng</button
+          ><span class="errand-live">Đi chợ hộ</span>
+        </div>
+        <div id="errand-root"></div>
+      </section>
+      <section id="browse">
+        <section
+          class="errand-service-card"
+          aria-labelledby="errand-service-title"
+        >
+          <div>
+            <p class="eyebrow">DỊCH VỤ ĐI CHỢ HỘ</p>
+            <h2 id="errand-service-title">
+              Bận hôm nay? Tiệm đi chợ giúp bạn.
+            </h2>
+            <p>
+              Gửi danh sách, chọn tỉnh/thành và cửa hàng. Bạn duyệt hàng, giá và
+              phí trước khi mua.
+            </p>
+            <div class="errand-service-steps">
+              <span>01 · Lên danh sách</span><span>02 · Duyệt hàng & giá</span
+              ><span>03 · Giao tận tay</span>
+            </div>
+          </div>
+          <a
+            href="/shop/errands"
+            id="errand-service-open"
+            class="errand-service-action"
+            >Bắt đầu đi chợ hộ <span aria-hidden="true">→</span></a
+          >
+        </section>
+        <div id="banners" class="banners"></div>
+        <div class="category-browser">
+          <label
+            >Nhóm hàng<select id="category-group">
+              <option value="">Tất cả nhóm hàng</option>
+            </select></label
+          >
+          <nav id="categories" class="categories" aria-label="Danh mục"></nav>
+        </div>
+        <div class="need-row">
+          <button data-budget="breakfast" class="need">
+            <span>☕</span><strong>Bữa sáng dưới 50.000đ</strong
+            ><small>Bạn chọn lại từng món</small></button
+          ><button data-budget="essentials" class="need">
+            <span>⌂</span><strong>Thiết yếu dưới 150.000đ</strong
+            ><small>Giỏ gọn, vừa ngân sách</small></button
+          ><button id="fresh-button" class="need">
+            <span>✦</span><strong>Ngon hôm nay</strong
+            ><small>Hàng tươi & ưu đãi cuối ngày</small>
+          </button>
+        </div>
+        <section id="combo-section" hidden>
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">DÙNG SỚM · GIẢM LÃNG PHÍ</p>
+              <h2>Ngon hôm nay, tiết kiệm hôm nay</h2>
+            </div>
+          </div>
+          <div id="combos" class="combo-grid"></div>
+        </section>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">THÊM CHÚT THIẾT YẾU</p>
+            <h2 id="catalog-title">Gợi ý cho bạn</h2>
+            <p id="recommendation-note" class="muted">
+              Khám phá các món thiết yếu của tiệm.
+            </p>
+          </div>
+          <div class="filters">
+            <label
+              >Thương hiệu<select id="brand">
+                <option value="">Tất cả nhãn hàng</option>
+              </select></label
+            >
+            <label
+              >Loại hàng<select id="storage">
+                <option value="">Tất cả bảo quản</option>
+                <option value="FRESH">Hàng tươi</option>
+                <option value="FROZEN">Đông lạnh</option>
+                <option value="CHILLED">Bảo quản mát</option>
+                <option value="DRY">Đồ khô</option>
+                <option value="HOUSEHOLD">Gia dụng</option>
+              </select></label
+            ><label
+              >Sắp xếp<select id="sort">
+                <option value="relevant">Phù hợp với bạn</option>
+                <option value="popular">Bán chạy</option>
+                <option value="price">Giá thấp trước</option>
+              </select></label
+            >
+          </div>
+        </div>
+        <div id="products" class="products"></div>
+        <button id="more" hidden>Xem thêm mặt hàng</button>
+      </section>
+      <section id="order-page" hidden></section>
+      <p id="page-error" class="error" role="alert"></p>
+    </main>
+    <footer>
+      <strong>Tạp hóa 360</strong
+      ><span>Mua vừa đủ · Chọn món thay thế · Biết rõ giá trước khi đặt</span
+      ><a href="/admin">Chủ tiệm &amp; nhân viên</a>
+    </footer>
+    <div class="cart-dock">
+      <span
+        ><b id="dock-total">Chưa chọn món</b
+        ><small id="dock-note">Khám phá tiệm gần nhà</small></span
+      ><button id="dock-cart" class="primary">Xem giỏ & đặt giao →</button>
+    </div>
+    <dialog id="shop-dialog">
+      <div class="dialog-heading">
+        <h2 id="dialog-title"></h2>
+        <button id="close-dialog" aria-label="Đóng">×</button>
+      </div>
+      <div id="dialog-content"></div>
+    </dialog>
+    <dialog id="modal" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <h2 id="modal-title"></h2>
+        <button id="modal-close" type="button" aria-label="Đóng">×</button>
+      </div>
+      <div id="modal-content"></div>
+    </dialog>
+    <div id="toast" role="status"></div>
+    <div id="shop-toast" role="status" hidden></div>
+  </body>
+</html>

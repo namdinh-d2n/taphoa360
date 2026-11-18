@@ -43,7 +43,112 @@ Trang `register.html`/`static/register.js` gửi yêu cầu công khai, chưa t�
 Chỉ chủ tiệm được duyệt; tạo tài khoản, liên kết/tạo hồ sơ nhân viên và đóng yêu cầu trong
 cùng transaction. Băm mật khẩu trong yêu cầu được xóa sau khi duyệt/từ chối.
 
+## Khôi phục tài khoản qua email OTP (schema 11)
+
+`retail/password_recovery.py` quản lý ba bước: gửi email OTP, xác thực OTP và đặt
+mật khẩu mới. Mã 6 số có hiệu lực 10 phút, tối đa 5 lần nhập sai. Gửi lại cách
+nhau ít nhất 60 giây, hủy yêu cầu OTP cũ; giới hạn 5 email/giờ cho một hộp thư và
+20 yêu cầu/giờ cho một địa chỉ truy cập. Thông báo giống nhau cho email đã/chưa
+đăng ký và tài khoản đã khóa.
+
+Mỗi yêu cầu có challenge ngẫu nhiên 256 bit; chỉ SHA-256 của challenge được lưu.
+OTP lưu HMAC-SHA256 với khóa là challenge gốc (không có trong database). Xác thực
+so sánh hằng thời gian, tăng số lần sai và commit trước khi trả lỗi. Khi đúng,
+transaction xóa OTP và cấp quyền đặt lại mật khẩu ngẫu nhiên 256 bit, chỉ lưu
+SHA-256, có hiệu lực 5 phút. Hai yêu cầu xác thực/sử dụng đồng thời chỉ một yêu
+cầu thành công. API đặt mật khẩu mới kiểm tra quyền này độc lập với giao diện.
+
+Đổi mật khẩu/email/quyền hoặc khôi phục backup thu hồi OTP và quyền đặt lại mật
+khẩu; đổi mật khẩu thu hồi phiên đăng nhập. Dấu vân tay mật khẩu/email ngăn sử
+dụng mã sau khi dữ liệu tài khoản thay đổi ngoài API. SMTP dùng STARTTLS/SSL có
+kiểm tra chứng chỉ, gửi sau commit ngoài khóa ghi. Lỗi gửi thư chỉ xóa OTP của
+lần gửi đó; không đưa mã hay lỗi chứa thông tin SMTP vào log.
+
+`users.email` duy nhất khi khác rỗng. Công cụ `scripts/set_recovery_email.py` gắn
+email cho chủ tiệm cũ từ máy chủ, có backup và audit. Schema 11 sao lưu trước
+nâng cấp và xóa token từ cơ chế gửi liên kết cũ; giữ nguyên email và nghiệp vụ.
+
+## Đi chợ hộ (schema 12–13)
+
+`errand_schema.py` migration cộng thêm; `errands.py` giữ quy tắc nghiệp vụ,
+`errand_api.py` nối xác thực khách/nhân viên và minh chứng riêng tư. UI dùng
+`errands-view.js` chung cho trang khách `errands-shop.js` và khu nhân viên
+`errands-admin.js`. Schema 13 thêm tỉnh/cửa hàng demo và phương thức thanh toán. `live_events.py` đánh thức SSE sau commit; revision theo quyền khách/nhân viên, không cần polling. QR do server tính từ số tiền đã duyệt còn phải thu. Khách duyệt dự kiến, từng thay thế và bản chốt cuối, kiểm tra
+phiên bản và thời hạn tại server trước khi mua. `errand_money` nối với `payments`
+để ghi thu/hoàn/chi và chốt ca, có mã chống trùng và mã biên nhận duy nhất.
+
+Xem ERRANDS.md về trạng thái, phân quyền, kiểm hàng và quyết toán. Báo cáo tách
+chỉ tiêu đi chợ hộ; ảnh nằm ngoài SQLite và phải sao lưu cùng dữ liệu. Tất cả
+bảng đi chợ hộ được loại khỏi snapshot review để ẩn nội dung riêng của khách.
+
+## Địa chỉ khách hàng mặc định (schema 14)
+
+`retail/shop_addresses.py` quản lý một nơi nhận cho mỗi `shop_accounts.id` trong
+`customer_delivery_addresses`. Lưu địa chỉ chuẩn hóa từ danh mục tỉnh/phường hoặc
+nhập tay, tên/điện thoại nhận, khu giao và cửa hàng đi chợ hộ. `/api/shop/me` trả
+`saved_address`; `/api/shop/address` GET/PUT yêu cầu phiên khách và CSRF/origin.
+Không nhận account_id từ request làm chủ sở hữu; form gửi expected_account_id để
+chặn lưu nhầm nếu phiên đổi tài khoản trong lúc đang nhập.
+
+Tạo đơn thành công cập nhật nơi nhận trong cùng transaction, bỏ qua idempotent
+replay; đơn cũ giữ địa chỉ snapshot. Thay đổi địa chỉ phát cập nhật theo revision
+SSE của chính tài khoản; frontend bỏ dữ liệu trong bộ nhớ khi đổi/thoát tài khoản.
+Snapshot review loại bảng địa chỉ mặc định; schema 14 backup trước nâng cấp và
+không suy ra dữ liệu địa chỉ từ đơn lịch sử.
+
 ## Dữ liệu và bất biến
+
+Schema 9 bổ sung luồng QR trả trước (`PREPAY`): giữ hàng khi tạo đơn, QR/số tiền/tài
+khoản nhận được chụp theo đơn; khách báo chuyển đưa sang `PAYMENT_REVIEW` nhưng
+không ghi thu. Thu ngân phụ trách/chủ tiệm đối chiếu và duyệt tiền trong transaction,
+ghi `payments.online_order_id`, xuất `online_invoices` một lần và chuyển chuẩn bị
+giao. Soạn từng món/phân công được kiểm tra trước khi bắt đầu giao. Hóa đơn nội bộ
+có snapshot khi duyệt và hiển thị phần kiểm nhận/hoàn thực tế sau giao. Đơn QR cũ
+giữ `LEGACY`, không viết lại trạng thái/giá hoặc chứng từ cũ khi nâng cấp.
+
+`online_workflow.py` quản lý giữ/hoàn tồn, báo/duyệt tiền, phân công trách nhiệm,
+khoản chi có idempotency và biên nhận bàn giao COD. Báo chuyển chưa vào thu; bàn
+giao COD không tạo thêm một khoản thu. Khoản hết hạn chưa báo chuyển được trả tồn/
+điểm; báo chuyển muộn ở đơn hủy/hết hạn đi vào đối chiếu và hoàn, không tự giao.
+Đã báo chuyển không tự hết hạn trước khi nhân viên xử lý. Quyền người phụ trách
+được kiểm tra ở API, chủ tiệm luôn có quyền quản lý. Có snapshot `before-v9-*.db`.
+
+Schema 6 thêm `rescue_campaigns` và bản chụp tên/số lượt combo trong `orders`, có
+snapshot trước nâng cấp. `retail/rescue.py` phân tích tồn cận hạn, mô phỏng FEFO,
+thống kê mua chung và tính giá bảo vệ lãi gộp; chỉ chủ tiệm bật/dừng combo.
+`sales.create_order` kiểm tra lại combo trong transaction, phân bổ giảm giá riêng
+cho hai mặt hàng và dùng `orders` để tính giới hạn lượt (không đếm đơn hủy).
+Đơn gửi lại không đếm/trừ kho lần nữa; hoàn tiền dùng net_subtotal đã lưu.
+`static/rescue.js` cung cấp bản xem trước; POS hỗ trợ chọn một combo trên mỗi đơn.
+Phân tích cục bộ không gọi API bên ngoài hoặc gán mức tăng nhu cầu giả định.
+
+Schema 7 thêm storefront: `shop_accounts`, `shop_sessions`, `delivery_zones`,
+`shop_banners`, `timed_sales`, `online_orders`, `online_items`, `online_events` và
+`shop_points_ledger`; đồng thời thêm danh mục/loại bảo quản/mô tả/ảnh online cho sản
+phẩm, `sell_until`/`quality_status` cho lô và `shipping_fee` cho đơn. Migration tự
+sao lưu trước khi thêm bảng/cột. Khách xem công khai nhưng checkout cần tài khoản
+khách riêng; token theo dõi chỉ trả trạng thái/các khoản tiền, không trả địa chỉ.
+`retail/commerce.py` tính server-side catalog, ngân sách, cặp mua chung, sale giờ,
+giữ điểm, COD/QR, FEFO giữ tồn và kiểm nhận/hoàn; `retail/shop_api.py` nối các quyền
+khách/nhân viên. Hàng tươi/lạnh bị từ chối đi vào `HOLD`, không tự bán lại.
+
+`retail/invoice_ai.py` dùng RapidOCR/ONNX trên CPU, nạp mô hình Latin PP-OCRv5 từ
+đĩa khi cần. Không có lời gọi mạng lúc đọc ảnh. Kết quả OCR được coi là văn bản
+không tin cậy, chỉ tách dữ liệu/so tên, không sinh SQL hay thực thi chỉ dẫn trên ảnh.
+`retail/invoice_api.py` cung cấp preview chỉ đọc cho chủ tiệm/kiểm kho, có CSRF và
+giới hạn upload riêng 8 MB. Không thay đổi schema hoặc nghiệp vụ. `static/invoice-ai.js`
+cho đối chiếu/chỉnh kết quả trước khi chuyển vào các dòng nhập thông thường.
+Việc tạo hàng mới hoặc ghi kho vẫn đi qua API đã kiểm tra quyền và transaction.
+
+Schema 5 bổ sung `supplier_products` với khóa chính `(supplier_id, product_id)`,
+giá nhập riêng và mã hàng của nhà cung cấp. Migration có snapshot trước nâng cấp,
+khởi tạo liên kết theo dòng phiếu nhập gần nhất cho mỗi cặp và không đổi tồn/phiếu cũ.
+API tạo nhanh hàng và liên kết trong cùng transaction, SKU trống được tự tạo.
+Ghi danh mục không tạo lô, biến động kho, thanh toán hay công nợ. Khi nhập hàng,
+giá thực nhập cập nhật giá gợi ý của đúng nhà cung cấp; giá phiếu/lô cũ giữ nguyên.
+Các client nhập hàng cũ tiếp tục được hỗ trợ: phiếu hợp lệ tự bổ sung liên kết nếu thiếu.
+`static/purchasing.js` quản lý ô tìm hàng, editor thêm nhanh và hồ sơ nhà cung cấp;
+editor nằm trong phiếu đang mở để không thay thế dữ liệu nháp bằng modal khác.
 
 - Mỗi nghiệp vụ ghi nằm trong một `BEGIN IMMEDIATE`, commit hoặc rollback toàn bộ.
   Kết nối bật foreign keys, timeout 20 giây. Mỗi hàm giữ kết nối trong phạm vi thao tác.
